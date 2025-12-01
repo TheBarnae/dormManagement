@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payments</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+</head>
+<body class="bg-light">
+    {% include '_nav.html' %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Payments</h2>
+        <a href="{{ url_for('payment') }}" class="btn btn-success">+ Record Payment</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Receipt #</th>
+                            <th>Tenant</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% if payments %}
+                        {% for payment in payments %}
+                            <tr>
+                                <td><strong>{{ payment.receipt_number }}</strong></td>
+                                <td>{{ payment.first_name }} {{ payment.last_name }}</td>
+                                <td>₱{{ "%.2f"|format(payment.amount) }}</td>
+                                <td>{{ payment.payment_method }}</td>
+                                <td>{{ payment.payment_date }}</td>
+                                <td><span class="badge bg-success">Recorded</span></td>
+                                <td>
+                                    <button class="btn btn-outline-info btn-sm">Receipt</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">No payments found</td>
+                        </tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script>
+    if (typeof bootstrap === 'undefined') {
+        var s = document.createElement('script');
+        s.src = "{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}";
+        document.head.appendChild(s);
+    }
+</script>
+</body>
+</html>

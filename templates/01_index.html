@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dormitory Management System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+</head>
+<body class="bg-light">
+    {% include '_nav.html' %}
+
+    <!-- Hero Section -->
+    <div class="text-center py-5 bg-gradient" style="background: linear-gradient(135deg, #ffffff 0%, #764ba2 100%); color: rgb(0, 0, 0);">
+        <div class="container">
+            <h1 class="display-4 fw-bold mb-3">Dormitory Management System</h1>
+            <p class="lead mb-4">Complete solution for managing users, buildings, rooms, assignments, and payments</p>
+        </div>
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="container py-5">
+        <div class="row g-4">
+            <!-- 1. Users -->
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('users') }}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
+                        <div class="card-body text-center">
+                            <div class="h2 mb-3">👥</div>
+                            <h5 class="card-title">Users Management</h5>
+                            <p class="card-text text-muted">Add, edit, and manage all users (students, admins, landlords)</p>
+                            <span class="badge bg-primary">Manage</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 2. Buildings -->
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('buildings') }}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
+                        <div class="card-body text-center">
+                            <div class="h2 mb-3">🏢</div>
+                            <h5 class="card-title">Buildings</h5>
+                            <p class="card-text text-muted">Manage dormitory buildings and their details</p>
+                            <span class="badge bg-success">View</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 3. Room Types -->
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('room_types') }}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
+                        <div class="card-body text-center">
+                            <div class="h2 mb-3">📋</div>
+                            <h5 class="card-title">Room Types</h5>
+                            <p class="card-text text-muted">Single, Double, Suite, and other room categories</p>
+                            <span class="badge bg-info">View</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 4. Rooms -->
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('rooms') }}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
+                        <div class="card-body text-center">
+                            <div class="h2 mb-3">🚪</div>
+                            <h5 class="card-title">Rooms</h5>
+                            <p class="card-text text-muted">Manage all dormitory rooms and their availability</p>
+                            <span class="badge bg-warning">View</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 5. Assignments -->
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('assignments') }}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
+                        <div class="card-body text-center">
+                            <div class="h2 mb-3">📝</div>
+                            <h5 class="card-title">Room Assignments</h5>
+                            <p class="card-text text-muted">Track tenant-to-room assignments and contracts</p>
+                            <span class="badge bg-danger">View</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 6. Payments -->
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('payments') }}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
+                        <div class="card-body text-center">
+                            <div class="h2 mb-3">💳</div>
+                            <h5 class="card-title">Payments</h5>
+                            <p class="card-text text-muted">Record and manage tenant rent payments</p>
+                            <span class="badge bg-success">Manage</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 7. Reports -->
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('reports') }}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
+                        <div class="card-body text-center">
+                            <div class="h2 mb-3">📊</div>
+                            <h5 class="card-title">Reports</h5>
+                            <p class="card-text text-muted">Generate and view occupancy, payment, and user reports</p>
+                            <span class="badge bg-primary">View</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-4 mt-5">
+        <div class="container">
+            <p class="mb-0">&copy; 2025 Dormitory Management System. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+        if (typeof bootstrap === 'undefined') {
+            var s = document.createElement('script');
+            s.src = "{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}";
+            document.head.appendChild(s);
+        }
+        // Add hover effect to cards
+        document.querySelectorAll('.card.transition').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+            });
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+    </body>
+</html>
