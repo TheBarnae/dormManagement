@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__, template_folder="dormManagement/templates")
+app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key")
 
 # -----------------------

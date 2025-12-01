@@ -2,11 +2,11 @@
 <html>
 <head>
     <title>Edit Profile</title>
-    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <style>
         /* Background image behind the form */
         body {
-            background-image: url('images/editProf.jpg'); /* change this to your actual file */
+            background-image: url("{{ url_for('static', filename='images/editProf.jpg') }}"); /* change this to your actual file */
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;

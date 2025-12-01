@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Payment</title>
-    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <style>
         /* Body styling */
         body {
-            background-image: url('images/background.jpg'); /* change to your background */
+            background-image: url("{{ url_for('static', filename='images/background.jpg') }}"); /* change to your background */
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
