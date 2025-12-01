@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+*.sqlite3
+
+# Flask
+instance/
+*.db
+
+# Sensitive files
+.env
+db.py
+
+# VS Code
+.vscode/
