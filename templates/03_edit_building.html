@@ -1,73 +1,70 @@
-<!DOCTYPE html>
-<html>
-<head>
-    {% include '_head.html' %}
-</head>
-<body class="bg-light">
-    {% include '_nav.html' %}
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0">Edit Building</h4>
-                    </div>
-                    <div class="card-body">
-                        {% with messages = get_flashed_messages(with_categories=true) %}
-                            {% if messages %}
-                                {% for category, message in messages %}
-                                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
-                                        {{ message }}
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                                    </div>
+{% extends '_base.html' %}
+
+{% block title %}Edit Building{% endblock %}
+
+{% block content %}
+<div class="container-modern">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            {% if building %}
+            <div class="card-modern">
+                <div class="card-header-modern">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.5rem;">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Edit Building
+                </div>
+                <div class="p-4">
+                    <form method="POST">
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Building Name</label>
+                            <input type="text" name="building_name" class="form-control-modern" value="{{ building.building_name }}" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Address</label>
+                            <textarea name="address" class="form-control-modern" rows="3" required>{{ building.address }}</textarea>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Total Floors</label>
+                            <input type="number" name="total_floors" class="form-control-modern" min="1" value="{{ building.total_floors }}" required>
+                        </div>
+
+                        {% if session.get('role') == 'admin' and landlords %}
+                        <div class="form-group mb-4">
+                            <label class="form-label-modern">Owner (Landlord)</label>
+                            <select name="owner_id" class="form-control-modern">
+                                <option value="">-- No Owner --</option>
+                                {% for l in landlords %}
+                                <option value="{{ l.user_id }}" {% if building.owner_id == l.user_id %}selected{% endif %}>
+                                    {{ l.username }} - {{ l.first_name }} {{ l.last_name }}
+                                </option>
                                 {% endfor %}
-                            {% endif %}
-                        {% endwith %}
-
-                        {% if building %}
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label for="building_name" class="form-label">Building Name</label>
-                                <input type="text" class="form-control" id="building_name" name="building_name" value="{{ building.building_name }}" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="address" class="form-label">Address</label>
-                                <textarea class="form-control" id="address" name="address" rows="3" required>{{ building.address }}</textarea>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="total_floors" class="form-label">Total Floors</label>
-                                <input type="number" class="form-control" id="total_floors" name="total_floors" min="1" value="{{ building.total_floors }}" required>
-                            </div>
-
-                            {% if session.get('role') == 'admin' and landlords %}
-                            <div class="mb-3">
-                                <label for="owner_id" class="form-label">Owner (Landlord)</label>
-                                <select name="owner_id" id="owner_id" class="form-select">
-                                    <option value="">-- No Owner --</option>
-                                    {% for l in landlords %}
-                                        <option value="{{ l.user_id }}" {% if building.owner_id == l.user_id %}selected{% endif %}>{{ l.username }} - {{ l.first_name }} {{ l.last_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            {% endif %}
-
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <a href="{{ url_for('buildings') }}" class="btn btn-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                            </div>
-                        </form>
-                        {% else %}
-                        <div class="alert alert-warning">Building not found</div>
-                        <a href="{{ url_for('buildings') }}" class="btn btn-secondary">Back to Buildings</a>
+                            </select>
+                        </div>
                         {% endif %}
-                    </div>
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for('buildings') }}" class="btn-secondary-modern">Cancel</a>
+                            <button type="submit" class="btn-primary-modern">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                </svg>
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
+            {% else %}
+            <div class="alert-modern alert-danger">
+                Building not found. <a href="{{ url_for('buildings') }}" style="color: inherit; text-decoration: underline;">Back to Buildings</a>
+            </div>
+            {% endif %}
         </div>
     </div>
-
-    {% include '_footer.html' %}
-</body>
-</html>
+</div>
+{% endblock %}

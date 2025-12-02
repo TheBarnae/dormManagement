@@ -277,9 +277,9 @@ Access at: `http://localhost:5000`
 
 | Username | Password | Role |
 |----------|----------|------|
-| admin1   | hashedpassword1 | admin |
-| admin2   | hashedpassword2 | admin |
-| stud001  | hashedpass3 | student |
+| admin1   | admin123 | admin |
+| landlord1   | landlord123 | landlord |
+| student1  | student123 | student |
 | stud002  | hashedpass4 | student |
 | stud003  | hashedpass5 | student |
 

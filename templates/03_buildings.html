@@ -1,74 +1,124 @@
-<!DOCTYPE html>
-<html>
-<head>
-    {% include '_head.html' %}
-</head>
-<body class="bg-light">
-    {% include '_nav.html' %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Buildings Management</h2>
+{% extends '_base.html' %}
+
+{% block title %}Buildings Management{% endblock %}
+
+{% block content %}
+<div class="container-modern">
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">Buildings</h1>
+            <p class="page-subtitle">Manage dormitory buildings and properties</p>
+        </div>
         {% if session.get('role') in ['admin', 'landlord'] %}
-            <a href="{{ url_for('add_building') }}" class="btn btn-success">+ Add Building</a>
+        <a href="{{ url_for('add_building') }}" class="btn-primary-modern">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Building
+        </a>
         {% endif %}
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <!-- Search Bar -->
+    <div class="card-modern mb-4" style="padding: 1rem;">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <div class="position-relative">
+                    <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" class="form-control-modern" placeholder="Search buildings by name or address..." style="padding-left: 2.5rem;">
                 </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <div class="row g-3">
-        {% if buildings %}
-            {% for building in buildings %}
-                <div class="col-md-6 col-lg-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ building.building_name }}</h5>
-                            <p class="card-text text-muted">{{ building.address }}</p>
-                            {% if building.owner_username %}
-                                <p class="mb-1"><small><strong>Owner:</strong> {{ building.owner_username }}</small></p>
-                            {% endif %}
-                            <div class="mb-3">
-                                <small class="d-block"><strong>Floors:</strong> {{ building.total_floors }}</small>
-                                <small class="d-block"><strong>Status:</strong> 
-                                    {% if building.is_active %}
-                                        <span class="badge bg-success">Active</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Inactive</span>
-                                    {% endif %}
-                                </small>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-light">
-                            <div class="btn-group btn-group-sm w-100" role="group">
-                                {% if session.get('role') == 'admin' %}
-                                    <a href="{{ url_for('edit_building', building_id=building.building_id) }}" class="btn btn-outline-warning">Edit</a>
-                                {% elif session.get('role') == 'landlord' and building.owner_id == session.get('user_id') %}
-                                    <a href="{{ url_for('edit_building', building_id=building.building_id) }}" class="btn btn-outline-warning">Edit</a>
-                                {% endif %}
-                                {% if session.get('role') == 'admin' %}
-                                    <button type="button" class="btn btn-outline-danger">Delete</button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
-        {% else %}
-            <div class="col-12">
-                <div class="alert alert-info">No buildings found</div>
             </div>
-        {% endif %}
+            <div class="col-md-4">
+                <select class="form-control-modern">
+                    <option>All Status</option>
+                    <option>Active</option>
+                    <option>Inactive</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card-modern">
+        <table class="table-modern w-100">
+            <thead>
+                <tr>
+                    <th>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.5rem;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                        </svg>
+                        Building
+                    </th>
+                    <th>Address</th>
+                    <th>Owner</th>
+                    <th>Floors</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if buildings %}
+                    {% for building in buildings %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600; color: var(--gray-900);">{{ building.building_name }}</div>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">{{ building.address }}</div>
+                        </td>
+                        <td>
+                            {% if building.owner_username %}
+                                <span style="font-size: 0.875rem;">{{ building.owner_username }}</span>
+                            {% else %}
+                                <span style="font-size: 0.875rem; color: var(--gray-400);">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span style="font-size: 0.875rem;">{{ building.total_floors }} floors</span>
+                        </td>
+                        <td>
+                            {% if building.is_active %}
+                                <span class="badge-modern badge-success">Active</span>
+                            {% else %}
+                                <span class="badge-modern badge-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <div class="d-flex gap-2 justify-content-end">
+                                {% if session.get('role') == 'admin' or (session.get('role') == 'landlord' and building.owner_id == session.get('user_id')) %}
+                                <a href="{{ url_for('edit_building', building_id=building.building_id) }}" class="btn-secondary-modern" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+                                    Edit
+                                </a>
+                                {% endif %}
+                                {% if session.get('role') == 'admin' %}
+                                <button type="button" class="btn-danger-modern" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+                                    Delete
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 3rem; color: var(--gray-600);">
+                            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1rem; display: block; opacity: 0.3;">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                            </svg>
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;">No buildings found</div>
+                            <div style="font-size: 0.875rem;">Add your first building to get started</div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
     </div>
 </div>
-
-{% include '_footer.html' %}
-</body>
-</html>
+{% endblock %}

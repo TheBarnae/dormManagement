@@ -1,328 +1,258 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    {% include '_head.html' %}
-</head>
-<body class="bg-light">
-    {% include '_nav.html' %}
+{% extends '_base.html' %}
 
+{% block content %}
+<div class="container-modern">
     <!-- Hero Section -->
-    <div class="text-center py-5 bg-gradient" style="background: linear-gradient(135deg, #ffffff 0%, #764ba2 100%); color: rgb(0, 0, 0);">
-        <div class="container">
-            <h1 class="display-4 fw-bold mb-3">Dormitory Management System</h1>
-            <p class="lead mb-4">
-                {% if session.get('role') == 'admin' %}
-                    Admin Dashboard - Full System Management
-                {% elif session.get('role') == 'landlord' %}
-                    Landlord Dashboard - Manage Your Properties
-                {% elif session.get('role') == 'student' %}
-                    Student Dashboard - View Your Room & Assignments
-                {% else %}
-                    Complete solution for managing users, buildings, rooms, assignments, and payments
-                {% endif %}
-            </p>
+    <div class="text-center py-5 mb-5" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 1rem; padding: 4rem 2rem !important;">
+        <h1 style="font-size: 2.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
+            Welcome to Accommo
+        </h1>
+        <p style="font-size: 1.125rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto;">
+            {% if session.get('role') == 'admin' %}
+                Complete system management and oversight
+            {% elif session.get('role') == 'landlord' %}
+                Manage your properties and tenants
+            {% elif session.get('role') == 'student' %}
+                Your dormitory information and payments
+            {% else %}
+                Modern dormitory management system
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Quick Stats (Admin Only) -->
+    {% if session.get('role') == 'admin' %}
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card-modern" style="padding: 1.5rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: 700; color: var(--primary-blue);">24</div>
+                <div style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">Total Rooms</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-modern" style="padding: 1.5rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: 700; color: #059669;">18</div>
+                <div style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">Occupied</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-modern" style="padding: 1.5rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: 700; color: #eab308;">6</div>
+                <div style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">Available</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-modern" style="padding: 1.5rem; text-align: center;">
+                <div style="font-size: 2rem; font-weight: 700; color: #dc2626;">3</div>
+                <div style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">Pending</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Module Cards -->
+    {% if session.get('role') == 'admin' %}
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('users') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Users</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Manage students, landlords, and admins</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('buildings') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Buildings</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Manage dormitory buildings</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('rooms') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Rooms</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">View and manage room units</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('assignments') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Assignments</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Track room assignments</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('payments') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Payments</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Manage rent payments</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('reports') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Reports</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Generate and view reports</p>
+                </div>
+            </a>
         </div>
     </div>
 
-    <!-- Dashboard Cards -->
-    <div class="container py-5">
-        <!-- ADMIN DASHBOARD -->
-        {% if session.get('role') == 'admin' %}
-        <div class="alert alert-info mb-4">
-            <strong>👨‍💼 Admin Access:</strong> You have full access to all system features.
-        </div>
-        <div class="row g-4">
-            <!-- 1. Users -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('users') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">👥</div>
-                            <h5 class="card-title">Users Management</h5>
-                            <p class="card-text text-muted">Add, edit, and manage all users (students, admins, landlords)</p>
-                            <span class="badge bg-primary">Manage</span>
-                        </div>
+    {% elif session.get('role') == 'landlord' %}
+    <div class="row g-4">
+        <div class="col-md-6">
+            <a href="{{ url_for('buildings') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        </svg>
                     </div>
-                </a>
-            </div>
-
-            <!-- 2. Buildings -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('buildings') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">🏢</div>
-                            <h5 class="card-title">Buildings</h5>
-                            <p class="card-text text-muted">Manage dormitory buildings and their details</p>
-                            <span class="badge bg-success">Manage</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 3. Room Types -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('room_types') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">📋</div>
-                            <h5 class="card-title">Room Types</h5>
-                            <p class="card-text text-muted">Single, Double, Suite, and other room categories</p>
-                            <span class="badge bg-info">Manage</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 4. Rooms -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('rooms') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">🚪</div>
-                            <h5 class="card-title">Rooms</h5>
-                            <p class="card-text text-muted">Manage all dormitory rooms and their availability</p>
-                            <span class="badge bg-warning">Manage</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 5. Assignments -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('assignments') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">📝</div>
-                            <h5 class="card-title">Room Assignments</h5>
-                            <p class="card-text text-muted">Track tenant-to-room assignments and contracts</p>
-                            <span class="badge bg-danger">Manage</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 6. Payments -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('payments') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">💳</div>
-                            <h5 class="card-title">Payments</h5>
-                            <p class="card-text text-muted">Record and manage tenant rent payments</p>
-                            <span class="badge bg-success">Manage</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 7. Reports -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('reports') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">📊</div>
-                            <h5 class="card-title">Reports</h5>
-                            <p class="card-text text-muted">Generate and view occupancy, payment, and user reports</p>
-                            <span class="badge bg-primary">Manage</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">My Buildings</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Manage your properties</p>
+                </div>
+            </a>
         </div>
 
-        <!-- LANDLORD DASHBOARD -->
-        {% elif session.get('role') == 'landlord' %}
-        <div class="alert alert-success mb-4">
-            <strong>🏠 Landlord Access:</strong> Manage your properties and tenant assignments.
-        </div>
-        <div class="row g-4">
-            <!-- 1. My Buildings -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('buildings') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">🏢</div>
-                            <h5 class="card-title">My Buildings</h5>
-                            <p class="card-text text-muted">View and manage your owned buildings</p>
-                            <span class="badge bg-success">View</span>
-                        </div>
+        <div class="col-md-6">
+            <a href="{{ url_for('rooms') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        </svg>
                     </div>
-                </a>
-            </div>
-
-            <!-- 2. My Rooms -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('rooms') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">🚪</div>
-                            <h5 class="card-title">My Rooms</h5>
-                            <p class="card-text text-muted">Manage your rental rooms and availability</p>
-                            <span class="badge bg-warning">View</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 3. Tenant Assignments -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('assignments') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">📝</div>
-                            <h5 class="card-title">Tenant Assignments</h5>
-                            <p class="card-text text-muted">View and manage tenant-to-room assignments</p>
-                            <span class="badge bg-info">View</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 4. Payments -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('payments') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">💳</div>
-                            <h5 class="card-title">Payments Received</h5>
-                            <p class="card-text text-muted">Track tenant rental payments</p>
-                            <span class="badge bg-success">View</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 5. Landlord Reports -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('reports') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">📊</div>
-                            <h5 class="card-title">Reports</h5>
-                            <p class="card-text text-muted">View occupancy and payment reports</p>
-                            <span class="badge bg-primary">View</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">My Rooms</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">View room availability</p>
+                </div>
+            </a>
         </div>
 
-        <!-- STUDENT DASHBOARD -->
-        {% elif session.get('role') == 'student' %}
-        <div class="alert alert-primary mb-4">
-            <strong>🎓 Student Access:</strong> View your room assignment and payment status.
-        </div>
-        <div class="row g-4">
-            <!-- 1. My Assignment -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('assignments') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">🏠</div>
-                            <h5 class="card-title">My Room Assignment</h5>
-                            <p class="card-text text-muted">View your current room and assignment details</p>
-                            <span class="badge bg-info">View</span>
-                        </div>
+        <div class="col-md-6">
+            <a href="{{ url_for('assignments') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        </svg>
                     </div>
-                </a>
-            </div>
-
-            <!-- 2. My Payments -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('payments') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">💳</div>
-                            <h5 class="card-title">My Payments</h5>
-                            <p class="card-text text-muted">View your payment history and dues</p>
-                            <span class="badge bg-success">View</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <!-- 3. Available Rooms (Browse) -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('rooms') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">🚪</div>
-                            <h5 class="card-title">Available Rooms</h5>
-                            <p class="card-text text-muted">Browse available rooms in the dormitory</p>
-                            <span class="badge bg-warning">View</span>
-                        </div>
-                    </div>
-                </a>
-            </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Tenant Assignments</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">View tenant contracts</p>
+                </div>
+            </a>
         </div>
 
-        <!-- DEFAULT DASHBOARD (NO ROLE OR UNKNOWN ROLE) -->
-        {% else %}
-        <div class="alert alert-warning mb-4">
-            <strong>⚠️ Notice:</strong> Your role is not recognized. Please contact the administrator.
-        </div>
-        <div class="row g-4">
-            <!-- Limited View -->
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('payments') }}" class="text-decoration-none">
-                    <div class="card h-100 shadow-sm border-0 transition" style="cursor: pointer; transition: transform 0.3s;">
-                        <div class="card-body text-center">
-                            <div class="h2 mb-3">💳</div>
-                            <h5 class="card-title">Payments</h5>
-                            <p class="card-text text-muted">View payment information</p>
-                            <span class="badge bg-secondary">View</span>
-                        </div>
+        <div class="col-md-6">
+            <a href="{{ url_for('payments') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        </svg>
                     </div>
-                </a>
-            </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Payments</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Track rental payments</p>
+                </div>
+            </a>
         </div>
-        {% endif %}
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-4 mt-5">
-        <div class="container">
-            <p class="mb-0">© 2025 Dormitory Management System. All rights reserved.</p>
+    {% else %}
+    <div class="row g-4">
+        <div class="col-md-4">
+            <a href="{{ url_for('assignments') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">My Room</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">View your assignment</p>
+                </div>
+            </a>
         </div>
-    </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script>
-        if (typeof bootstrap === 'undefined') {
-            var s = document.createElement('script');
-            s.src = "{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}";
-            document.head.appendChild(s);
-        }
-        // Add hover effect to cards
-        document.querySelectorAll('.card.transition').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-5px)';
-            });
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-            });
-        });
-    </script>
-</body>
-</html>
+        <div class="col-md-4">
+            <a href="{{ url_for('payments') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">My Payments</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">View payment history</p>
+                </div>
+            </a>
+        </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script>
-        if (typeof bootstrap === 'undefined') {
-            var s = document.createElement('script');
-            s.src = "{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}";
-            document.head.appendChild(s);
-        }
-        // Add hover effect to cards
-        document.querySelectorAll('.card.transition').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-5px)';
-            });
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-            });
-        });
-    </script>
-    </body>
-</html>
+        <div class="col-md-4">
+            <a href="{{ url_for('rooms') }}" style="text-decoration: none; color: inherit;">
+                <div class="card-modern" style="padding: 2rem;">
+                    <div style="width: 48px; height: 48px; background: #dbeafe; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Available Rooms</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">Browse open rooms</p>
+                </div>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

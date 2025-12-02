@@ -16,6 +16,12 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key_please_change")
 
+# In app.py, add cache headers
+@app.after_request
+def add_header(response):
+    response.cache_control.max_age = 300  # 5 minutes
+    return response
+
 # -----------------------
 # HOME PAGE / DASHBOARD
 # -----------------------

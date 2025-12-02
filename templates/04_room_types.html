@@ -1,55 +1,78 @@
-<!DOCTYPE html>
-<html>
-<head>
-    {% include '_head.html' %}
-</head>
-<body class="bg-light">
-    {% include '_nav.html' %}
-<div class="container-fluid py-4">
-    <h2 class="mb-4">Room Types</h2>
+{% extends '_base.html' %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+{% block title %}Room Types{% endblock %}
 
-    <div class="row g-3">
+{% block content %}
+<div class="container-modern">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">Room Types</h1>
+        <p class="page-subtitle">Available room categories and pricing</p>
+    </div>
+
+    <!-- Room Types Grid -->
+    <div class="row g-4">
         {% if room_types %}
             {% for room_type in room_types %}
-                <div class="col-md-6 col-lg-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ room_type.type_name }}</h5>
-                            <div class="mb-3">
-                                <small class="d-block"><strong>Base Rate:</strong> ₱{{ "%.2f"|format(room_type.base_rate) }}</small>
-                                <small class="d-block"><strong>Capacity:</strong> {{ room_type.capacity }} person(s)</small>
-                                <small class="d-block"><strong>Description:</strong> {{ room_type.description }}</small>
-                                <small class="d-block"><strong>Status:</strong> 
-                                    {% if room_type.is_active %}
-                                        <span class="badge bg-success">Active</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Inactive</span>
-                                    {% endif %}
-                                </small>
+            <div class="col-md-6 col-lg-4">
+                <div class="card-modern" style="height: 100%;">
+                    <div style="padding: 1.5rem;">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--gray-900); margin: 0 0 0.5rem 0;">
+                                    {{ room_type.type_name }}
+                                </h3>
+                                <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">
+                                    ₱{{ "%.2f"|format(room_type.base_rate) }}
+                                    <span style="font-size: 0.875rem; font-weight: 400; color: var(--gray-600);">/month</span>
+                                </div>
+                            </div>
+                            {% if room_type.is_active %}
+                                <span class="badge-modern badge-success">Active</span>
+                            {% else %}
+                                <span class="badge-modern badge-danger">Inactive</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div style="border-top: 1px solid var(--gray-200); padding-top: 1rem; margin-top: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                <svg width="20" height="20" fill="none" stroke="var(--gray-600)" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span style="font-size: 0.9375rem; color: var(--gray-700);">
+                                    <strong>Capacity:</strong> {{ room_type.capacity }} person(s)
+                                </span>
+                            </div>
+                            
+                            <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                                <svg width="20" height="20" fill="none" stroke="var(--gray-600)" stroke-width="2" style="margin-top: 2px; flex-shrink: 0;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 16v-4"></path>
+                                    <path d="M12 8h.01"></path>
+                                </svg>
+                                <p style="font-size: 0.9375rem; color: var(--gray-700); margin: 0; line-height: 1.6;">
+                                    {{ room_type.description }}
+                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
             {% endfor %}
         {% else %}
             <div class="col-12">
-                <div class="alert alert-info">No room types found</div>
+                <div class="card-modern">
+                    <div style="text-align: center; padding: 3rem; color: var(--gray-600);">
+                        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1rem; display: block; opacity: 0.3;">
+                            <rect x="3" y="9" width="18" height="13" rx="2" ry="2"></rect>
+                        </svg>
+                        <div style="font-weight: 600; margin-bottom: 0.5rem;">No room types found</div>
+                        <div style="font-size: 0.875rem;">Room types will be displayed here</div>
+                    </div>
+                </div>
             </div>
         {% endif %}
     </div>
 </div>
-
-{% include '_footer.html' %}
-</body>
-</html>
+{% endblock %}

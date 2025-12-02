@@ -1,90 +1,118 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    {% include '_head.html' %}
-    <title>Room Assignments</title>
-</head>
-<body class="bg-light">
-    {% include '_nav.html' %}
-    <div class="container-fluid py-4">
-        <h2 class="mb-4">Room Assignments</h2>
+{% extends '_base.html' %}
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% block title %}Room Assignments{% endblock %}
 
-        <div class="d-flex justify-content-end mb-3">
-            {% if session.get('role') in ['admin', 'landlord'] %}
-            <a href="{{ url_for('export_assignments') }}" class="btn btn-outline-primary">Export CSV</a>
-            {% endif %}
+{% block content %}
+<div class="container-modern">
+    <!-- Page Header -->
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">Room Assignments</h1>
+            <p class="page-subtitle">Track tenant-to-room assignments and contracts</p>
         </div>
-        <div class="card shadow-sm">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped mb-0">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Assignment ID</th>
-                                <th>Tenant</th>
-                                <th>Room</th>
-                                <th>Building</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Monthly Rate</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if assignments %}
-                                {% for assign in assignments %}
-                                    <tr>
-                                        <td><strong>{{ assign.assignment_id }}</strong></td>
-                                        <td>{{ assign.first_name }} {{ assign.last_name }}</td>
-                                        <td>{{ assign.room_number }}</td>
-                                        <td>{{ assign.building_name or '-' }}</td>
-                                        <td>{{ assign.start_date }}</td>
-                                        <td>{{ assign.end_date }}</td>
-                                        <td>₱{{ "%.2f"|format(assign.monthly_rate) }}</td>
-                                        <td><span class="badge bg-info">{{ assign.status }}</span></td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <button class="btn btn-outline-info btn-sm">View</button>
-                                                {% if session.get('role') in ['admin', 'landlord'] %}
-                                                    <button class="btn btn-outline-warning btn-sm">Edit</button>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="9" class="text-center text-muted py-4">No assignments found</td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+        {% if session.get('role') in ['admin', 'landlord'] %}
+        <a href="{{ url_for('export_assignments') }}" class="btn-secondary-modern">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export CSV
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Search Bar -->
+    <div class="card-modern mb-4" style="padding: 1rem;">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <div class="position-relative">
+                    <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" class="form-control-modern" placeholder="Search by tenant or room..." style="padding-left: 2.5rem;">
                 </div>
+            </div>
+            <div class="col-md-4">
+                <select class="form-control-modern">
+                    <option>All Status</option>
+                    <option>Active</option>
+                    <option>Pending</option>
+                    <option>Cancelled</option>
+                </select>
             </div>
         </div>
     </div>
 
-    {% include '_footer.html' %}
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script>
-        if (typeof bootstrap === 'undefined') {
-            var s = document.createElement('script');
-            s.src = "{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}";
-            document.head.appendChild(s);
-        }
-    </script>
-</body>
-</html>
+    <!-- Data Table -->
+    <div class="card-modern">
+        <table class="table-modern w-100">
+            <thead>
+                <tr>
+                    <th>Tenant</th>
+                    <th>Room</th>
+                    <th>Building</th>
+                    <th>Contract Period</th>
+                    <th>Monthly Rate</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if assignments %}
+                    {% for assign in assignments %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600; color: var(--gray-900);">{{ assign.first_name }} {{ assign.last_name }}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">ID: {{ assign.assignment_id }}</div>
+                        </td>
+                        <td>
+                            <span style="font-weight: 500;">{{ assign.room_number }}</span>
+                        </td>
+                        <td>
+                            <span style="font-size: 0.875rem;">{{ assign.building_name or '-' }}</span>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.875rem;">
+                                <div>{{ assign.start_date }}</div>
+                                <div style="color: var(--gray-600);">to {{ assign.end_date }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="font-weight: 600; color: var(--primary);">₱{{ "%.2f"|format(assign.monthly_rate) }}</span>
+                        </td>
+                        <td>
+                            <span class="badge-modern badge-info">{{ assign.status }}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button class="btn-secondary-modern" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+                                    View
+                                </button>
+                                {% if session.get('role') in ['admin', 'landlord'] %}
+                                <button class="btn-secondary-modern" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+                                    Edit
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 3rem; color: var(--gray-600);">
+                            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1rem; display: block; opacity: 0.3;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;">No assignments found</div>
+                            <div style="font-size: 0.875rem;">Assignments will appear here once tenants are assigned to rooms</div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
