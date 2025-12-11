@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, flash, url_for, session, Response
+from flask import Flask, current_app, render_template, request, redirect, flash, url_for, session, Response,jsonify
 from db import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -10,8 +10,14 @@ from datetime import datetime
 from functools import wraps
 import csv
 from io import StringIO
+import seed_data, db
 
+db.init_db()
+seed_data.seed_database()  # Ensure database is seeded on startup
 load_dotenv()
+
+
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key_please_change")
@@ -21,6 +27,48 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key_please_change")
 def add_header(response):
     response.cache_control.max_age = 300  # 5 minutes
     return response
+#
+
+
+
+# Role-based decorator to centralize access rules
+def role_required(*allowed_roles):
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            role = session.get('role')
+            if not role or role not in allowed_roles:
+                flash('Permission denied: insufficient role.', 'danger')
+                return redirect(url_for('home'))
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # -----------------------
 # HOME PAGE / DASHBOARD
@@ -35,29 +83,328 @@ def home():
     # User is logged in, show dashboard
     return render_template("index.html")
 
+
+
+
+@app.route("/admin_assign_room", methods=["GET", "POST"])
+def admin_assign_room():
+    if request.method == "POST":
+        first_name = request.form.get("first_name")
+        last_name = request.form.get("last_name")
+        email = request.form.get("email")
+        room_id = int(request.form.get("room_id"))
+        start_date = request.form.get("start_date")
+        end_date = request.form.get("end_date")
+        monthly_rate = request.form.get("monthly_rate")
+        assigned_by = request.form.get("assigned_by")
+
+        # Validation
+        if not first_name or not last_name or not email:
+            flash("Tenant name and email are required.", "danger")
+            return redirect(request.path)
+
+        if not room_id:
+            flash("Please select a room.", "danger")
+            return redirect(request.path)
+
+        # Validate email format
+        email_regex = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+        if not re.match(email_regex, email):
+            flash("Invalid email format.", "danger")
+            return redirect(request.path)
+
+        # Validate dates
+        try:
+            sd = datetime.strptime(start_date, "%Y-%m-%d")
+            if end_date:
+                ed = datetime.strptime(end_date, "%Y-%m-%d")
+                if ed <= sd:
+                    flash("End date must be later than start date.", "danger")
+                    return redirect(request.path)
+        except ValueError:
+            flash("Invalid date format.", "danger")
+            return redirect(request.path)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Check if user exists
+            cursor.execute("SELECT user_id FROM users WHERE email=?", (email,))
+            row = cursor.fetchone()
+
+            if row:
+                user_id = row["user_id"]
+            else:
+                # Create new tenant with auto username
+                username = email.split("@")[0]  # auto username
+                cursor.execute("SELECT COUNT(*) FROM users WHERE username=?", (username,))
+                if cursor.fetchone()[0] > 0:
+                    username = username + "1"
+
+                password_hash = generate_password_hash("TempPass123")
+                cursor.execute("""
+                    INSERT INTO users (username, password_hash, role, first_name, last_name, email, is_active)
+                    VALUES (?, ?, 'student', ?, ?, ?, 1)
+                """, (username, password_hash, first_name, last_name, email))
+                user_id = cursor.lastrowid
+
+            # Check room availability
+            cursor.execute("SELECT is_available FROM rooms WHERE room_id=?", (room_id,))
+            room = cursor.fetchone()
+            if not room:
+                flash("Room not found.", "danger")
+                return redirect(request.path)
+
+            if room["is_available"] == 0:
+                flash("Room is not available.", "danger")
+                return redirect(request.path)
+
+            # Create room assignment
+            cursor.execute("""
+                INSERT INTO room_assignments
+                (user_id, room_id, start_date, end_date, monthly_rate, status, assigned_by)
+                VALUES (?, ?, ?, ?, ?, 'active', ?)
+            """, (user_id, room_id, start_date, end_date, monthly_rate, assigned_by))
+
+            # Mark room unavailable
+            cursor.execute("UPDATE rooms SET is_available=0 WHERE room_id=?", (room_id,))
+
+            conn.commit()
+            flash("Room successfully assigned!", "success")
+
+            return redirect(url_for("users"))
+
+        except Exception as e:
+            flash(f"Error assigning room: {e}", "danger")
+
+        finally:
+            cursor.close()
+            conn.close()
+
+    # GET: Show room list
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT r.room_id, r.room_number, rt.type_name, r.floor_number, b.building_name, rt.base_rate
+        FROM rooms r
+        LEFT JOIN room_types rt ON r.type_id = rt.type_id
+        LEFT JOIN buildings b ON r.building_id = b.building_id
+        WHERE r.is_available = 1
+    """)
+    rooms = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return render_template("06_assign_room.html", rooms=rooms,current_user={'user_id': session.get('user_id')})
+
+
+
+@app.route("/edit_room/<int:room_id>", methods=["GET", "POST"])
+def edit_room(room_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Fetch room
+    cursor.execute("""
+        SELECT r.*, b.building_name, t.type_name
+        FROM rooms r
+        LEFT JOIN buildings b ON r.building_id = b.building_id
+        LEFT JOIN room_types t ON r.type_id = t.type_id
+        WHERE r.room_id = ?
+    """, (room_id,))
+    room = cursor.fetchone()
+
+    # Fetch all active room types for dropdown
+    cursor.execute("SELECT type_id, type_name FROM room_types WHERE is_active = 1")
+    room_types = cursor.fetchall()
+
+    if not room:
+        flash("Room not found.", "warning")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("rooms"))
+
+    if request.method == "POST":
+        room_number = request.form.get("room_number", "").strip()
+        floor_number = request.form.get("floor_number", "").strip()
+        type_id = request.form.get("type_id")
+        is_available = request.form.get("is_available", "1")
+
+        # Basic validation
+        if not room_number or not floor_number:
+            flash("Room number and floor number are required.", "warning")
+            return redirect(url_for("05_edit_rooms", room_id=room_id))
+
+        # Update room
+        cursor.execute("""
+            UPDATE rooms
+            SET room_number = ?, floor_number = ?, type_id = ?, is_available = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE room_id = ?
+        """, (room_number, floor_number, type_id, is_available, room_id))
+        conn.commit()
+        flash("Room updated successfully!", "success")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("rooms"))
+
+    cursor.close()
+    conn.close()
+    return render_template("05_edit_rooms.html", room=room, room_types=room_types)
+
+@app.route("/delete_room/<int:room_id>", methods=["POST"])
+def delete_room(room_id):
+    if session.get("role") not in ["admin", "landlord"]:
+        flash("You do not have permission to delete rooms.", "danger")
+        return redirect(url_for("rooms"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if room exists
+    cursor.execute("SELECT * FROM rooms WHERE room_id = ?", (room_id,))
+    room = cursor.fetchone()
+    if not room:
+        flash("Room not found.", "warning")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("rooms"))
+
+    # Check if room is available AND has no active assignments
+    cursor.execute("""
+        SELECT COUNT(*) as active_count
+        FROM room_assignments
+        WHERE room_id = ? AND status = 'active'
+    """, (room_id,))
+    active_count = cursor.fetchone()["active_count"]
+
+    if not room["is_available"] or active_count > 0:
+        flash("Cannot delete room. It is either occupied or assigned to a tenant.", "warning")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("rooms"))
+
+    # Safe to delete
+    cursor.execute("DELETE FROM rooms WHERE room_id = ?", (room_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    flash("Room deleted successfully.", "success")
+    return redirect(url_for("rooms"))
+
+@app.route("/add_room", methods=["GET", "POST"])
+def add_room():
+    if session.get("role") not in ["admin", "landlord"]:
+        flash("You do not have permission to add rooms.", "danger")
+        return redirect(url_for("rooms"))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Fetch active buildings for the dropdown
+    cursor.execute("SELECT building_id, building_name, total_floors FROM buildings WHERE is_active = 1")
+    buildings = cursor.fetchall()
+
+    # Fetch active room types for the dropdown
+    cursor.execute("SELECT type_id, type_name FROM room_types WHERE is_active = 1")
+    room_types = cursor.fetchall()
+
+    if request.method == "POST":
+        building_id = request.form.get("building_id")
+        floor_number = request.form.get("floor_number")
+        room_number = request.form.get("room_number").strip()
+        type_id = request.form.get("type_id")
+
+        # Basic validation
+        if not building_id or not floor_number or not room_number or not type_id:
+            flash("All fields are required.", "warning")
+            return redirect(url_for("add_room"))
+
+        # Check if room number already exists in this building
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM rooms
+            WHERE building_id = ? AND room_number = ?
+        """, (building_id, room_number))
+        exists = cursor.fetchone()["count"]
+
+        if exists > 0:
+            flash(f"Room number '{room_number}' already exists in the selected building.", "warning")
+            return redirect(url_for("add_room"))
+
+        # Insert new room
+        cursor.execute("""
+            INSERT INTO rooms (building_id, room_number, floor_number, type_id, is_available, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """, (building_id, room_number, floor_number, type_id))
+        conn.commit()
+        flash("Room added successfully!", "success")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("rooms"))
+
+    cursor.close()
+    conn.close()
+    return render_template("05_add_room.html", buildings=buildings, room_types=room_types)
+
+@app.route("/building_floors/<int:building_id>")
+def building_floors(building_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT total_floors FROM buildings WHERE building_id = ?", (building_id,))
+    building = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if building:
+        # Return a list of floor numbers
+        return jsonify([i for i in range(1, building["total_floors"] + 1)])
+    return jsonify([])
+
 # ===========================
 # 1. USERS MANAGEMENT
 # ===========================
-
 @app.route("/users")
 def users():
+    search = request.args.get("search", "").strip()
+    role_filter = request.args.get("role", "").strip()
+    
     conn = get_db_connection()
     cursor = conn.cursor()
     users = []
+    
     try:
-        cursor.execute("""
+        query = """
             SELECT user_id, username, first_name, last_name, role, 
                    email, phone, is_active 
-            FROM users 
-            ORDER BY user_id
-        """)
+            FROM users
+            WHERE 1=1
+        """
+        params = []
+
+        # Search filter
+        if search:
+            query += " AND (first_name LIKE ? OR last_name LIKE ? OR username LIKE ? OR email LIKE ?)"
+            like_search = f"%{search}%"
+            params.extend([like_search, like_search, like_search, like_search])
+        
+        # Role filter
+        if role_filter and role_filter.lower() != "all roles":
+            query += " AND role = ?"
+            params.append(role_filter.lower())
+
+        query += " ORDER BY user_id"
+
+        cursor.execute(query, params)
         users = [dict(row) for row in cursor.fetchall()]
+
     except Exception as e:
         flash(f"Error fetching users: {e}", "danger")
     finally:
         cursor.close()
         conn.close()
-    return render_template("02_users.html", users=users)
+    
+    return render_template("02_users.html", users=users, search=search, role_filter=role_filter)
 
 @app.route("/add_user", methods=["GET", "POST"])
 def add_user():
@@ -101,7 +448,7 @@ def add_user():
             if cursor.fetchone()[0] > 0:
                 flash("Email already registered.", "danger")
                 return redirect(request.path)
-                return redirect(request.path)
+                return redirect(request.path)            
             cursor.execute("""
                 INSERT INTO users 
                 (username, password_hash, role, first_name, last_name, email, phone, birth_date, is_active)
@@ -231,41 +578,98 @@ def role_required(*allowed_roles):
 
 @app.route("/edit_user/<int:user_id>", methods=["GET", "POST"])
 def edit_user(user_id):
-    conn = get_db_connection()
+    conn = get_db_connection()  # make sure this sets conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     user = None
     try:
         if request.method == "POST":
-            first_name = request.form.get("first_name")
-            last_name = request.form.get("last_name")
-            email = request.form.get("email")
-            phone = request.form.get("phone")
-            birth_date = request.form.get("birth_date")
+            # read form inputs
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            password = request.form.get("password", "")  # empty string if not provided
+            email = request.form.get("email", "").strip()
+            phone = request.form.get("phone", "").strip()
+            birth_date = request.form.get("birth_date", "").strip()
+            role = request.form.get("role", "student").strip()
 
-            cursor.execute("""
-                UPDATE users 
-                SET first_name=?, last_name=?, email=?, phone=?, birth_date=?
-                WHERE user_id=?
-            """, (first_name, last_name, email, phone, birth_date, user_id))
+            # basic validation
+            if not first_name or not last_name:
+                flash("First name and last name are required.", "warning")
+                return redirect(url_for("edit_user", user_id=user_id))
+
+            # if password provided, optional validation (example: min 8 chars)
+            if password:
+                if len(password) < 8:
+                    flash("Password must be at least 8 characters long.", "warning")
+                    return redirect(url_for("edit_user", user_id=user_id))
+                password_hash = generate_password_hash(password)
+                cursor.execute(
+                    """
+                    UPDATE users
+                    SET first_name = ?, last_name = ?, password_hash = ?, email = ?, phone = ?, birth_date = ?, role = ?
+                    WHERE user_id = ?
+                    """,
+                    (first_name, last_name, password_hash, email, phone, birth_date or None, role, user_id)
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE users
+                    SET first_name = ?, last_name = ?, email = ?, phone = ?, birth_date = ?, role = ?
+                    WHERE user_id = ?
+                    """,
+                    (first_name, last_name, email, phone, birth_date or None, role, user_id)
+                )
+
             conn.commit()
             flash("User updated successfully!", "success")
             return redirect(url_for("users"))
 
-        cursor.execute("""
+        # GET: fetch user to show in form
+        cursor.execute(
+            """
             SELECT user_id, username, first_name, last_name, role, email, phone, birth_date, is_active
-            FROM users WHERE user_id=?
-        """, (user_id,))
+            FROM users
+            WHERE user_id = ?
+            """,
+            (user_id,)
+        )
         user = cursor.fetchone()
 
         if not user:
             flash("User not found.", "warning")
             return redirect(url_for("users"))
 
+        # If birth_date is a datetime string in DB, convert to YYYY-MM-DD for the input
+        # This only runs if the field is not None/empty; adapt to your DB format
+        if user.get("birth_date"):
+            try:
+                # try parsing common formats, adjust if your DB has a different format
+                bd = user["birth_date"]
+                if isinstance(bd, str):
+                    # attempt to parse ISO-like
+                    parsed = None
+                    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S"):
+                        try:
+                            parsed = datetime.strptime(bd, fmt)
+                            break
+                        except Exception:
+                            continue
+                    if parsed:
+                        # attach an iso date string for template use
+                        user = dict(user)  # convert row to mutable dict if needed
+                        user["birth_date"] = parsed.strftime("%Y-%m-%d")
+            except Exception:
+                pass
+
     except Exception as e:
-        flash(f"Error editing user: {e}", "danger")
+        # log error server-side in production
+        #flash(f"Error editing user: {e}", "danger")
+        pass
     finally:
         cursor.close()
         conn.close()
+
     return render_template("02_edit_user.html", user=user)
 
 @app.route("/delete_user/<int:user_id>", methods=["POST"])
@@ -362,43 +766,59 @@ def logout():
 # 2. BUILDINGS MANAGEMENT
 # ===========================
 
+
 @app.route("/buildings")
 def buildings():
+    search = request.args.get("search", "").strip()
+    status_filter = request.args.get("status", "").strip()  # Active/Inactive/All
+
     conn = get_db_connection()
     cursor = conn.cursor()
     buildings = []
+
     try:
-        # role-aware query
+        # Base query
+        query = """
+            SELECT b.building_id, b.building_name, b.address, b.total_floors,
+                   b.is_active, b.owner_id, u.username AS owner_username, b.created_at
+            FROM buildings b
+            LEFT JOIN users u ON b.owner_id = u.user_id
+            WHERE 1=1
+        """
+        params = []
+
+        # Landlord role: only their buildings
         if session.get('role') == 'landlord':
-            cursor.execute("""
-                SELECT b.building_id, b.building_name, b.address, b.total_floors, b.is_active, b.owner_id, u.username as owner_username, b.created_at
-                FROM buildings b
-                LEFT JOIN users u ON b.owner_id = u.user_id
-                WHERE b.owner_id = ?
-                ORDER BY b.building_id
-            """, (session.get('user_id'),))
+            query += " AND b.owner_id = ?"
+            params.append(session.get('user_id'))
+        # Student role: only active buildings
         elif session.get('role') == 'student':
-            cursor.execute("""
-                SELECT b.building_id, b.building_name, b.address, b.total_floors, b.is_active, b.owner_id, u.username as owner_username, b.created_at
-                FROM buildings b
-                LEFT JOIN users u ON b.owner_id = u.user_id
-                WHERE b.is_active = 1
-                ORDER BY b.building_id
-            """)
-        else:
-            cursor.execute("""
-                SELECT b.building_id, b.building_name, b.address, b.total_floors, b.is_active, b.owner_id, u.username as owner_username, b.created_at
-                FROM buildings b
-                LEFT JOIN users u ON b.owner_id = u.user_id
-                ORDER BY b.building_id
-            """)
-        buildings = cursor.fetchall()
+            query += " AND b.is_active = 1"
+
+        # Search filter
+        if search:
+            query += " AND (b.building_name LIKE ? OR b.address LIKE ?)"
+            like_search = f"%{search}%"
+            params.extend([like_search, like_search])
+
+        # Status filter
+        if status_filter and status_filter.lower() != "all status":
+            is_active = 1 if status_filter.lower() == "active" else 0
+            query += " AND b.is_active = ?"
+            params.append(is_active)
+
+        query += " ORDER BY b.building_id"
+
+        cursor.execute(query, params)
+        buildings = [dict(row) for row in cursor.fetchall()]
+
     except Exception as e:
         flash(f"Error fetching buildings: {e}", "danger")
     finally:
         cursor.close()
         conn.close()
-    return render_template("03_buildings.html", buildings=buildings)
+
+    return render_template("03_buildings.html", buildings=buildings, search=search, status_filter=status_filter)
 
 @app.route("/add_building", methods=["GET", "POST"])
 @role_required('admin','landlord')
@@ -542,50 +962,73 @@ def room_types():
 # ===========================
 # 4. ROOMS MANAGEMENT
 # ===========================
+from flask import request
 
 @app.route("/rooms")
 def rooms():
+    search = request.args.get("search", "").strip()
+    building_filter = request.args.get("building", "").strip()
+    status_filter = request.args.get("status", "").strip()  # Available / Occupied / All
+
     conn = get_db_connection()
     cursor = conn.cursor()
     rooms = []
+
     try:
-        # role-aware rooms listing
+        # Base query
+        query = """
+            SELECT r.room_id, r.room_number, r.floor_number, b.building_name,
+                   rt.type_name, r.is_available, b.owner_id
+            FROM rooms r
+            LEFT JOIN buildings b ON r.building_id = b.building_id
+            LEFT JOIN room_types rt ON r.type_id = rt.type_id
+            WHERE 1=1
+        """
+        params = []
+
+        # Role-based filtering
         if session.get('role') == 'landlord':
-            cursor.execute("""
-                SELECT r.room_id, r.room_number, r.floor_number, b.building_name, 
-                       rt.type_name, r.is_available
-                FROM rooms r
-                LEFT JOIN buildings b ON r.building_id = b.building_id
-                LEFT JOIN room_types rt ON r.type_id = rt.type_id
-                WHERE b.owner_id = ?
-                ORDER BY r.room_id
-            """, (session.get('user_id'),))
+            query += " AND b.owner_id = ?"
+            params.append(session.get('user_id'))
         elif session.get('role') == 'student':
-            cursor.execute("""
-                SELECT r.room_id, r.room_number, r.floor_number, b.building_name, 
-                       rt.type_name, r.is_available
-                FROM rooms r
-                LEFT JOIN buildings b ON r.building_id = b.building_id
-                LEFT JOIN room_types rt ON r.type_id = rt.type_id
-                WHERE r.is_available = 1
-                ORDER BY r.room_id
-            """)
-        else:
-            cursor.execute("""
-                SELECT r.room_id, r.room_number, r.floor_number, b.building_name, 
-                       rt.type_name, r.is_available
-                FROM rooms r
-                LEFT JOIN buildings b ON r.building_id = b.building_id
-                LEFT JOIN room_types rt ON r.type_id = rt.type_id
-                ORDER BY r.room_id
-            """)
-        rooms = cursor.fetchall()
+            query += " AND r.is_available = 1"
+
+        # Search by room number
+        if search:
+            query += " AND r.room_number LIKE ?"
+            params.append(f"%{search}%")
+
+        # Filter by building
+        if building_filter and building_filter.lower() != "all buildings":
+            query += " AND b.building_name = ?"
+            params.append(building_filter)
+
+        # Filter by status
+        if status_filter and status_filter.lower() != "all status":
+            if status_filter.lower() == "available":
+                query += " AND r.is_available = 1"
+            else:  # Occupied
+                query += " AND r.is_available = 0"
+
+        query += " ORDER BY r.room_id"
+
+        cursor.execute(query, params)
+        rooms = [dict(row) for row in cursor.fetchall()]
+
+        # For building select dropdown
+        cursor.execute("SELECT building_name FROM buildings ORDER BY building_name")
+        buildings_list = [row["building_name"] for row in cursor.fetchall()]
+
     except Exception as e:
         flash(f"Error fetching rooms: {e}", "danger")
+        buildings_list = []
     finally:
         cursor.close()
         conn.close()
-    return render_template("05_rooms.html", rooms=rooms)
+
+    return render_template("05_rooms.html", rooms=rooms, search=search,
+                           building_filter=building_filter, status_filter=status_filter,
+                           buildings_list=buildings_list)
 
 # ===========================
 # 5. ROOM ASSIGNMENTS MANAGEMENT
@@ -634,12 +1077,17 @@ def assignments():
                 ORDER BY ra.assignment_id
             """)
         assignments = cursor.fetchall()
+        converted = []
+        for row in assignments:
+            r = dict(row)            # convert Row object to dict
+            r["monthly_rate"] = float(r["monthly_rate"])
+            converted.append(r)
     except Exception as e:
         flash(f"Error fetching assignments: {e}", "danger")
     finally:
         cursor.close()
         conn.close()
-    return render_template("06_assignments.html", assignments=assignments)
+    return render_template("06_assignments.html", assignments=converted)
 
 # ===========================
 # 6. PAYMENTS MANAGEMENT
@@ -855,9 +1303,9 @@ def export_assignments():
         conn.close()
 
 
-    @app.route('/export/reports')
-    @role_required('admin')
-    def export_reports():
+@app.route('/export/reports')
+@role_required('admin')
+def export_reports():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
@@ -885,6 +1333,21 @@ def debug_session():
         'role': session.get('role'),
         'session_keys': list(session.keys())
     }
+
+#
+
+
+
+# my added codes
+
+
+
+
+
+
+
+
+
 
 # -----------------------
 # RUN APP

@@ -11,14 +11,27 @@
             <p class="page-subtitle">Track tenant-to-room assignments and contracts</p>
         </div>
         {% if session.get('role') in ['admin', 'landlord'] %}
-        <a href="{{ url_for('export_assignments') }}" class="btn-secondary-modern">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Export CSV
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('admin_assign_room') }}" class="btn-primary-modern">
+                
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" 
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="8" y1="2" x2="8" y2="14" />
+                        <line x1="2" y1="8" x2="14" y2="8" />
+                </svg>
+                Assign Room
+            </a>
+
+            <a href="{{ url_for('export_assignments') }}" class="btn-secondary-modern">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export CSV
+            </a>
+        </div>
+
         {% endif %}
     </div>
 
@@ -53,7 +66,8 @@
                     <th>Tenant</th>
                     <th>Room</th>
                     <th>Building</th>
-                    <th>Contract Period</th>
+                    <th>Start Period</th>
+                    <th>End Period</th>
                     <th>Monthly Rate</th>
                     <th>Status</th>
                     <th style="text-align: right;">Actions</th>
@@ -74,11 +88,12 @@
                             <span style="font-size: 0.875rem;">{{ assign.building_name or '-' }}</span>
                         </td>
                         <td>
-                            <div style="font-size: 0.875rem;">
-                                <div>{{ assign.start_date }}</div>
-                                <div style="color: var(--gray-600);">to {{ assign.end_date }}</div>
-                            </div>
+                            <span style="font-size: 0.875rem;">{{ assign.start_date or '-' }}</span>
                         </td>
+                        <td>
+                            <span style="font-size: 0.875rem;">{{ assign.end_date or '-' }}</span>
+                        </td>
+        
                         <td>
                             <span style="font-weight: 600; color: var(--primary);">₱{{ "%.2f"|format(assign.monthly_rate) }}</span>
                         </td>

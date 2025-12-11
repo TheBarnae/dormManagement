@@ -37,6 +37,14 @@
                         </div>
 
                         <div class="form-group mb-3">
+                            <label class="form-label-modern">Password</label>
+                            <input type="password" name="password" class="form-control-modern" autocomplete="new-password" placeholder="Leave blank to keep current password">
+                            <small style="color: var(--gray-600); font-size: 0.8125rem; display: block; margin-top: 0.25rem;">
+                                Leave blank to keep current password. Minimum 8 characters if changing.
+                            </small>
+                        </div>
+
+                        <div class="form-group mb-3">
                             <label class="form-label-modern">Email</label>
                             <input type="email" name="email" class="form-control-modern" value="{{ user.email }}" required>
                         </div>
