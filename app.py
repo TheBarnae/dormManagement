@@ -1264,46 +1264,187 @@ def payments():
     conn = get_db_connection()
     cursor = conn.cursor()
     payments = []
+    students = []
+    buildings = []
+    stats = {}
+    
+    # Get filter parameters
+    student_filter = request.args.get('student_filter')
+    building_filter = request.args.get('building_filter')
+    method_filter = request.args.get('method_filter')
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    
     try:
+        # Base query with all needed joins
+        base_query = """
+            SELECT p.payment_id, u.username, u.first_name, u.last_name,
+                   p.amount, p.payment_method, p.payment_date, 
+                   p.receipt_number, p.payment_period_start, p.payment_period_end,
+                   p.notes, r.room_number, b.building_name, ra.monthly_rate
+            FROM payments p
+            LEFT JOIN users u ON p.user_id = u.user_id
+            LEFT JOIN room_assignments ra ON p.assignment_id = ra.assignment_id
+            LEFT JOIN rooms r ON ra.room_id = r.room_id
+            LEFT JOIN buildings b ON r.building_id = b.building_id
+        """
+        
+        where_clauses = []
+        params = []
+        
+        # Role-based filtering
         if session.get('role') == 'landlord':
+            where_clauses.append("b.owner_id = ?")
+            params.append(session.get('user_id'))
+        elif session.get('role') == 'student':
+            where_clauses.append("p.user_id = ?")
+            params.append(session.get('user_id'))
+        
+        # Additional filters
+        if student_filter:
+            where_clauses.append("p.user_id = ?")
+            params.append(student_filter)
+        if building_filter:
+            where_clauses.append("b.building_id = ?")
+            params.append(building_filter)
+        if method_filter:
+            where_clauses.append("p.payment_method = ?")
+            params.append(method_filter)
+        if date_from:
+            where_clauses.append("p.payment_date >= ?")
+            params.append(date_from)
+        if date_to:
+            where_clauses.append("p.payment_date <= ?")
+            params.append(date_to)
+        
+        # Construct final query
+        if where_clauses:
+            base_query += " WHERE " + " AND ".join(where_clauses)
+        base_query += " ORDER BY p.payment_date DESC, p.payment_id DESC"
+        
+        cursor.execute(base_query, params)
+        payments = cursor.fetchall()
+        
+        # Get statistics based on role
+        if session.get('role') == 'admin':
+            # Total collected
+            cursor.execute("SELECT SUM(amount) as total FROM payments")
+            row = cursor.fetchone()
+            stats['total_collected'] = row['total'] if row['total'] else 0
+            
+            # This month
             cursor.execute("""
-                SELECT p.payment_id, u.username, u.first_name, u.last_name,
-                       p.amount, p.payment_method, p.payment_date, 
-                       p.receipt_number
-                FROM payments p
-                LEFT JOIN users u ON p.user_id = u.user_id
+                SELECT SUM(amount) as total FROM payments 
+                WHERE strftime('%Y-%m', payment_date) = strftime('%Y-%m', 'now')
+            """)
+            row = cursor.fetchone()
+            stats['month_collected'] = row['total'] if row['total'] else 0
+            
+            # Payment count
+            cursor.execute("SELECT COUNT(*) as count FROM payments")
+            row = cursor.fetchone()
+            stats['payment_count'] = row['count']
+            
+            # Average payment
+            cursor.execute("SELECT AVG(amount) as avg FROM payments")
+            row = cursor.fetchone()
+            stats['avg_payment'] = row['avg'] if row['avg'] else 0
+            
+        elif session.get('role') == 'landlord':
+            # Total collected for landlord's buildings
+            cursor.execute("""
+                SELECT SUM(p.amount) as total FROM payments p
                 LEFT JOIN room_assignments ra ON p.assignment_id = ra.assignment_id
                 LEFT JOIN rooms r ON ra.room_id = r.room_id
                 LEFT JOIN buildings b ON r.building_id = b.building_id
                 WHERE b.owner_id = ?
-                ORDER BY p.payment_id DESC
             """, (session.get('user_id'),))
-        elif session.get('role') == 'student':
+            row = cursor.fetchone()
+            stats['total_collected'] = row['total'] if row['total'] else 0
+            
+            # This month
             cursor.execute("""
-                SELECT p.payment_id, u.username, u.first_name, u.last_name,
-                       p.amount, p.payment_method, p.payment_date, 
-                       p.receipt_number
-                FROM payments p
-                LEFT JOIN users u ON p.user_id = u.user_id
-                WHERE p.user_id = ?
-                ORDER BY p.payment_id DESC
+                SELECT SUM(p.amount) as total FROM payments p
+                LEFT JOIN room_assignments ra ON p.assignment_id = ra.assignment_id
+                LEFT JOIN rooms r ON ra.room_id = r.room_id
+                LEFT JOIN buildings b ON r.building_id = b.building_id
+                WHERE b.owner_id = ? AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
             """, (session.get('user_id'),))
-        else:
+            row = cursor.fetchone()
+            stats['month_collected'] = row['total'] if row['total'] else 0
+            
+            # Payment count
             cursor.execute("""
-                SELECT p.payment_id, u.username, u.first_name, u.last_name,
-                       p.amount, p.payment_method, p.payment_date, 
-                       p.receipt_number
-                FROM payments p
-                LEFT JOIN users u ON p.user_id = u.user_id
-                ORDER BY p.payment_id DESC
-            """)
-        payments = cursor.fetchall()
+                SELECT COUNT(*) as count FROM payments p
+                LEFT JOIN room_assignments ra ON p.assignment_id = ra.assignment_id
+                LEFT JOIN rooms r ON ra.room_id = r.room_id
+                LEFT JOIN buildings b ON r.building_id = b.building_id
+                WHERE b.owner_id = ?
+            """, (session.get('user_id'),))
+            row = cursor.fetchone()
+            stats['payment_count'] = row['count']
+            
+        else:  # student
+            # Total paid
+            cursor.execute("SELECT SUM(amount) as total FROM payments WHERE user_id = ?", (session.get('user_id'),))
+            row = cursor.fetchone()
+            stats['total_paid'] = row['total'] if row['total'] else 0
+            
+            # Current balance (monthly_rate minus paid)
+            cursor.execute("""
+                SELECT SUM(ra.monthly_rate) as expected FROM room_assignments ra
+                WHERE ra.user_id = ? AND ra.status = 'active'
+            """, (session.get('user_id'),))
+            row = cursor.fetchone()
+            expected = row['expected'] if row['expected'] else 0
+            stats['balance'] = expected - stats['total_paid']
+            
+            # Next due date
+            cursor.execute("""
+                SELECT MIN(end_date) as next_due FROM room_assignments
+                WHERE user_id = ? AND status = 'active' AND end_date > date('now')
+            """, (session.get('user_id'),))
+            row = cursor.fetchone()
+            stats['next_due'] = row['next_due'] if row and row['next_due'] else 'N/A'
+        
+        # Get students list for filter (admin/landlord)
+        if session.get('role') in ['admin', 'landlord']:
+            if session.get('role') == 'admin':
+                cursor.execute("""
+                    SELECT DISTINCT u.user_id, u.first_name, u.last_name 
+                    FROM users u
+                    WHERE u.role = 'student' AND u.is_active = 1
+                    ORDER BY u.first_name, u.last_name
+                """)
+            else:
+                cursor.execute("""
+                    SELECT DISTINCT u.user_id, u.first_name, u.last_name 
+                    FROM users u
+                    JOIN room_assignments ra ON u.user_id = ra.user_id
+                    JOIN rooms r ON ra.room_id = r.room_id
+                    JOIN buildings b ON r.building_id = b.building_id
+                    WHERE b.owner_id = ? AND u.is_active = 1
+                    ORDER BY u.first_name, u.last_name
+                """, (session.get('user_id'),))
+            students = cursor.fetchall()
+        
+        # Get buildings list for filter (admin only)
+        if session.get('role') == 'admin':
+            cursor.execute("SELECT building_id, building_name FROM buildings WHERE is_active = 1 ORDER BY building_name")
+            buildings = cursor.fetchall()
+            
     except Exception as e:
         flash(f"Error fetching payments: {e}", "danger")
     finally:
         cursor.close()
         conn.close()
-    return render_template("07_payments.html", payments=payments)
+    
+    return render_template("07_payments.html", 
+                         payments=payments, 
+                         students=students, 
+                         buildings=buildings,
+                         stats=stats,
+                         today=datetime.now().strftime('%Y-%m-%d'))
 
 @app.route("/payment", methods=["GET", "POST"])
 @app.route("/payment/<int:payment_id>", methods=["GET", "POST"])
@@ -1359,6 +1500,198 @@ def payment(payment_id=None):
         conn.close()
     
     return render_template("07_payment.html", users=users)
+
+@app.route("/record_payment", methods=["POST"])
+@role_required('admin', 'landlord')
+def record_payment():
+    user_id = request.form.get("user_id")
+    assignment_id = request.form.get("assignment_id") or None
+    amount = request.form.get("amount")
+    payment_method = request.form.get("payment_method")
+    payment_date = request.form.get("payment_date")
+    receipt_number = request.form.get("receipt_number")
+    payment_period_start = request.form.get("payment_period_start") or None
+    payment_period_end = request.form.get("payment_period_end") or None
+    notes = request.form.get("notes") or None
+    
+    # Validate inputs
+    if not user_id or not amount or not payment_method or not payment_date:
+        flash("Please fill in all required fields.", "warning")
+        return redirect(url_for("payments"))
+    
+    # Auto-generate receipt number if not provided
+    if not receipt_number:
+        receipt_number = f"PMT-{datetime.now().strftime('%Y%m%d')}-{int(datetime.now().timestamp() * 1000) % 10000:04d}"
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Insert payment
+        cursor.execute("""
+            INSERT INTO payments (
+                user_id, assignment_id, amount, payment_method, payment_date,
+                payment_period_start, payment_period_end, receipt_number,
+                recorded_by, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, assignment_id, amount, payment_method, payment_date,
+              payment_period_start, payment_period_end, receipt_number,
+              session.get('user_id'), notes))
+        
+        conn.commit()
+        flash(f"Payment recorded successfully! Receipt: {receipt_number}", "success")
+        
+    except sqlite3.IntegrityError as e:
+        if "UNIQUE constraint failed" in str(e):
+            flash("Receipt number already exists. Please use a different one.", "danger")
+        else:
+            flash(f"Error recording payment: {e}", "danger")
+    except Exception as e:
+        flash(f"Error recording payment: {e}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for("payments"))
+
+@app.route("/api/assignments/<int:user_id>")
+@role_required('admin', 'landlord')
+def get_user_assignments(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Get active assignments for the user
+        cursor.execute("""
+            SELECT ra.assignment_id, ra.monthly_rate, r.room_number, b.building_name
+            FROM room_assignments ra
+            LEFT JOIN rooms r ON ra.room_id = r.room_id
+            LEFT JOIN buildings b ON r.building_id = b.building_id
+            WHERE ra.user_id = ? AND ra.status = 'active'
+            ORDER BY ra.start_date DESC
+        """, (user_id,))
+        
+        assignments = cursor.fetchall()
+        
+        return jsonify({
+            'assignments': [dict(a) for a in assignments]
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route("/payment/<int:payment_id>/view")
+def view_payment(payment_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT p.*, u.first_name, u.last_name, u.email, u.phone,
+                   r.room_number, b.building_name, ra.monthly_rate,
+                   rec.first_name as recorded_by_first, rec.last_name as recorded_by_last
+            FROM payments p
+            LEFT JOIN users u ON p.user_id = u.user_id
+            LEFT JOIN room_assignments ra ON p.assignment_id = ra.assignment_id
+            LEFT JOIN rooms r ON ra.room_id = r.room_id
+            LEFT JOIN buildings b ON r.building_id = b.building_id
+            LEFT JOIN users rec ON p.recorded_by = rec.user_id
+            WHERE p.payment_id = ?
+        """, (payment_id,))
+        
+        payment = cursor.fetchone()
+        
+        if not payment:
+            flash("Payment not found.", "warning")
+            return redirect(url_for("payments"))
+        
+        # Check permissions
+        if session.get('role') == 'student' and payment['user_id'] != session.get('user_id'):
+            flash("You don't have permission to view this payment.", "danger")
+            return redirect(url_for("payments"))
+        
+        return render_template("view_payment.html", payment=payment)
+        
+    except Exception as e:
+        flash(f"Error fetching payment: {e}", "danger")
+        return redirect(url_for("payments"))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route("/payment/<int:payment_id>/edit", methods=["GET", "POST"])
+@role_required('admin')
+def edit_payment(payment_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    if request.method == "POST":
+        amount = request.form.get("amount")
+        payment_method = request.form.get("payment_method")
+        payment_date = request.form.get("payment_date")
+        notes = request.form.get("notes")
+        
+        try:
+            cursor.execute("""
+                UPDATE payments 
+                SET amount = ?, payment_method = ?, payment_date = ?, notes = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE payment_id = ?
+            """, (amount, payment_method, payment_date, notes, payment_id))
+            
+            conn.commit()
+            flash("Payment updated successfully!", "success")
+            return redirect(url_for("payments"))
+            
+        except Exception as e:
+            flash(f"Error updating payment: {e}", "danger")
+        finally:
+            cursor.close()
+            conn.close()
+    
+    try:
+        cursor.execute("""
+            SELECT p.*, u.first_name, u.last_name
+            FROM payments p
+            LEFT JOIN users u ON p.user_id = u.user_id
+            WHERE p.payment_id = ?
+        """, (payment_id,))
+        
+        payment = cursor.fetchone()
+        
+        if not payment:
+            flash("Payment not found.", "warning")
+            return redirect(url_for("payments"))
+        
+        return render_template("edit_payment.html", payment=payment)
+        
+    except Exception as e:
+        flash(f"Error fetching payment: {e}", "danger")
+        return redirect(url_for("payments"))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route("/delete_payment/<int:payment_id>", methods=["POST"])
+@role_required('admin')
+def delete_payment(payment_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("DELETE FROM payments WHERE payment_id = ?", (payment_id,))
+        conn.commit()
+        flash("Payment deleted successfully!", "success")
+    except Exception as e:
+        flash(f"Error deleting payment: {e}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for("payments"))
 
 # ===========================
 # 7. REPORTS
