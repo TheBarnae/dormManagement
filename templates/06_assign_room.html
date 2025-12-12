@@ -7,162 +7,61 @@
     <div class="row justify-content-center">
         <div class="col-lg-6">
             <div class="card-modern">
-
                 <div class="card-header-modern">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="vertical-align: middle; margin-right: 0.5rem;">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                    </svg>
                     Assign Room To Tenant
                 </div>
-
                 <div class="p-4">
                     <form method="POST" action="{{ url_for('admin_assign_room') }}">
 
-                        <!-- Student Selection -->
+                        <!-- Tenant Username or Email -->
                         <div class="form-group mb-3">
-                            <label class="form-label-modern">Student Selection *</label>
-                            <select name="student_selection" id="student_selection" class="form-control-modern" required onchange="toggleStudentFields()">
-                                <option value="">Choose an option</option>
-                                <option value="existing">Select Existing Student</option>
-                                <option value="new">Create New Student</option>
-                            </select>
-                        </div>
-
-                        <!-- Existing Student Selection -->
-                        <div id="existing_student_section" style="display: none;">
-                            <div class="form-group mb-3">
-                                <label class="form-label-modern">Available Students</label>
-                                <select name="existing_student_id" id="existing_student_id" class="form-control-modern">
-                                    <option value="">Select a student</option>
-                                    {% for student in available_students %}
-                                    <option value="{{ student.user_id }}">
-                                        {{ student.first_name }} {{ student.last_name }} ({{ student.email }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                {% if not available_students %}
-                                <small class="text-muted" style="color: #f59e0b !important;">No students without active assignments. Create a new one below.</small>
-                                {% else %}
-                                <small class="text-muted">Students without active room assignments</small>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- New Student Information -->
-                        <div id="new_student_section" style="display: none;">
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label-modern">First Name</label>
-                                    <input type="text" name="first_name" id="first_name" class="form-control-modern">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label-modern">Last Name</label>
-                                    <input type="text" name="last_name" id="last_name" class="form-control-modern">
-                                </div>
-                            </div>
-
-                            <div class="form-group mb-3">
-                                <label class="form-label-modern">Email</label>
-                                <input type="email" name="email" id="email" class="form-control-modern">
-                                <small class="text-muted">Must be unique - will be used to generate username</small>
-                            </div>
+                            <label class="form-label-modern">Tenant Username or Email</label>
+                            <input type="text" name="username_or_email" class="form-control-modern" required
+                                placeholder="Enter tenant username or email">
                         </div>
 
                         <!-- Room Selection -->
-                        <div class="row g-3 mb-3">
-                            <div >
-                                <label class="form-label-modern">Room Number</label>
-                                
-                                <select name="room_id" id="room_id" class="form-control-modern" required>
-                                    <option value="">Select a room</option>
-                                    {% for room in rooms %}
-                                    <option value="{{ room.room_id }}">
-                                        {{ room.room_number }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-
-                            </div>
-
-                            
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Room</label>
+                            <select name="room_id" class="form-control-modern" required>
+                                <option value="">Select a room</option>
+                                {% for room in rooms %}
+                                <option value="{{ room.room_id }}">
+                                    {{ room.room_number }} - {{ room.building_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
-
-                        
 
                         <!-- Dates -->
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label-modern">Start Date</label>
+                                <label class="form-label-modern">From</label>
                                 <input type="date" name="start_date" class="form-control-modern" required>
-                                <small class="text-muted">Assignment start date</small>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label-modern">End Date (Optional)</label>
+                                <label class="form-label-modern">Until</label>
                                 <input type="date" name="end_date" class="form-control-modern">
-                                <small class="text-muted">Leave empty for ongoing</small>
                             </div>
                         </div>
 
                         <!-- Rate -->
                         <div class="form-group mb-3">
                             <label class="form-label-modern">Monthly Rate</label>
-                            <input type="number" step="0.01" name="monthly_rate"
-                                id="monthly_rate" class="form-control-modern" >
+                            <input type="number" step="0.01" name="monthly_rate" class="form-control-modern">
                         </div>
 
-                        <!-- Hidden Assigned By -->
                         <input type="hidden" name="assigned_by" value="{{ current_user.user_id }}">
 
                         <div class="d-flex gap-2 justify-content-end">
                             <a href="{{ url_for('users') }}" class="btn-secondary-modern">Cancel</a>
-                            <button type="submit" class="btn-primary-modern">
-                                Confirm Assignment
-                            </button>
+                            <button type="submit" class="btn-primary-modern">Confirm Assignment</button>
                         </div>
 
                     </form>
                 </div>
-
             </div>
         </div>
     </div>
 </div>
-
-<script>
-function toggleStudentFields() {
-    const selection = document.getElementById('student_selection').value;
-    const existingSection = document.getElementById('existing_student_section');
-    const newSection = document.getElementById('new_student_section');
-    const existingStudentSelect = document.getElementById('existing_student_id');
-    const firstNameInput = document.getElementById('first_name');
-    const lastNameInput = document.getElementById('last_name');
-    const emailInput = document.getElementById('email');
-    
-    if (selection === 'existing') {
-        existingSection.style.display = 'block';
-        newSection.style.display = 'none';
-        existingStudentSelect.required = true;
-        firstNameInput.required = false;
-        lastNameInput.required = false;
-        emailInput.required = false;
-    } else if (selection === 'new') {
-        existingSection.style.display = 'none';
-        newSection.style.display = 'block';
-        existingStudentSelect.required = false;
-        firstNameInput.required = true;
-        lastNameInput.required = true;
-        emailInput.required = true;
-    } else {
-        existingSection.style.display = 'none';
-        newSection.style.display = 'none';
-        existingStudentSelect.required = false;
-        firstNameInput.required = false;
-        lastNameInput.required = false;
-        emailInput.required = false;
-    }
-}
-</script>
-
 {% endblock %}

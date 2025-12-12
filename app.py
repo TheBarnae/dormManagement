@@ -10,7 +10,6 @@ from datetime import datetime
 from functools import wraps
 import csv
 from io import StringIO
-import sqlite3
 import seed_data, db
 
 db.init_db()
@@ -19,92 +18,16 @@ load_dotenv()
 
 ######################################3
 
-# ===========================
-# HELPER FUNCTIONS FOR VALIDATION
-# ===========================
 
-def validate_date_range(start_date, end_date):
-    """Validates that date range is logical"""
-    if not start_date:
-        return False, "Start date is required."
-    
-    try:
-        sd = datetime.strptime(start_date, "%Y-%m-%d")
-        if end_date:
-            ed = datetime.strptime(end_date, "%Y-%m-%d")
-            if ed <= sd:
-                return False, "End date must be after start date."
-    except ValueError:
-        return False, "Invalid date format."
-    
-    return True, None
 
-def check_room_overlap(cursor, room_id, start_date, end_date, exclude_assignment_id=None):
-    """Check if room has overlapping assignments"""
-    query = """
-        SELECT assignment_id, start_date, end_date 
-        FROM room_assignments
-        WHERE room_id = ? AND status IN ('active', 'pending')
-    """
-    params = [room_id]
-    
-    if exclude_assignment_id:
-        query += " AND assignment_id != ?"
-        params.append(exclude_assignment_id)
-    
-    cursor.execute(query, params)
-    existing = cursor.fetchall()
-    
-    for assignment in existing:
-        existing_start = assignment['start_date']
-        existing_end = assignment['end_date'] or '9999-12-31'  # No end date = ongoing
-        
-        # Check for overlap
-        if end_date:
-            # New assignment has end date
-            if not (end_date <= existing_start or start_date >= existing_end):
-                return False, f"Room is already assigned from {existing_start} to {existing_end}"
-        else:
-            # New assignment has no end date
-            if start_date <= existing_end:
-                return False, f"Room is already assigned from {existing_start}"
-    
-    return True, None
-
-def check_user_has_active_assignment(cursor, user_id, exclude_assignment_id=None):
-    """Check if user already has an active assignment"""
-    query = """
-        SELECT ra.assignment_id, r.room_number, b.building_name
-        FROM room_assignments ra
-        JOIN rooms r ON ra.room_id = r.room_id
-        JOIN buildings b ON r.building_id = b.building_id
-        WHERE ra.user_id = ? AND ra.status = 'active'
-    """
-    params = [user_id]
-    
-    if exclude_assignment_id:
-        query += " AND ra.assignment_id != ?"
-        params.append(exclude_assignment_id)
-    
-    cursor.execute(query, params)
-    active = cursor.fetchone()
-    
-    if active:
-        return False, f"User already has an active assignment in room {active['room_number']}, {active['building_name']}"
-    
-    return True, None
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key_please_change")
 
-# Clear cache headers to ensure fresh content after Flask restarts
+# In app.py, add cache headers
 @app.after_request
 def add_header(response):
-    response.cache_control.no_cache = True
-    response.cache_control.no_store = True
-    response.cache_control.must_revalidate = True
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
+    response.cache_control.max_age = 300  # 5 minutes
     return response
 #
 
@@ -180,11 +103,9 @@ def edit_assignment(assignment_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Fetch assignment details with comprehensive joins
+    # Fetch assignment with room + building info
     cursor.execute("""
-        SELECT ra.*, u.first_name, u.last_name, u.email, u.user_id,
-               r.room_number, r.room_id, r.building_id, 
-               b.building_name
+        SELECT ra.*, u.first_name, u.last_name, r.room_number, r.room_id, r.building_id, b.building_name
         FROM room_assignments ra
         LEFT JOIN users u ON ra.user_id = u.user_id
         LEFT JOIN rooms r ON ra.room_id = r.room_id
@@ -199,187 +120,77 @@ def edit_assignment(assignment_id):
         conn.close()
         return redirect(url_for("assignments"))
 
-    # Store original values for comparison
-    original_room_id = assignment["room_id"]
-    original_status = assignment["status"]
-    original_start = assignment["start_date"]
-    original_end = assignment["end_date"]
-
-    if request.method == "POST":
-        # Get form data
-        new_building_id = request.form.get("building_id")
-        new_room_number = request.form.get("room_number")
-        start_date = request.form.get("start_date")
-        end_date = request.form.get("end_date") or None
-        monthly_rate = request.form.get("monthly_rate")
-        status = request.form.get("status")
-
-        # Comprehensive input validation
-        if not new_building_id or not new_room_number or not start_date or not monthly_rate or not status:
-            flash("All required fields must be filled.", "warning")
-            cursor.close()
-            conn.close()
-            return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-
-        try:
-            new_building_id = int(new_building_id)
-            monthly_rate = float(monthly_rate)
-            
-            if monthly_rate <= 0:
-                flash("Monthly rate must be greater than zero.", "warning")
-                cursor.close()
-                conn.close()
-                return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-        except ValueError:
-            flash("Invalid building ID or monthly rate format.", "danger")
-            cursor.close()
-            conn.close()
-            return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-
-        # Validate date range
-        is_valid, error_msg = validate_date_range(start_date, end_date)
-        if not is_valid:
-            flash(error_msg, "danger")
-            cursor.close()
-            conn.close()
-            return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-
-        try:
-            # Get new room_id and verify it exists
-            cursor.execute(
-                "SELECT room_id, room_number FROM rooms WHERE room_number = ? AND building_id = ?",
-                (new_room_number, new_building_id)
-            )
-            new_room = cursor.fetchone()
-            if not new_room:
-                flash("Selected room not found in the specified building.", "danger")
-                cursor.close()
-                conn.close()
-                return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-            
-            new_room_id = new_room["room_id"]
-
-            # Detect what changed
-            room_changed = new_room_id != original_room_id
-            dates_changed = start_date != original_start or end_date != original_end
-            status_changed = status != original_status
-            
-            # Check for conflicts if room or dates changed
-            if room_changed or dates_changed:
-                # If changing to active/pending status, check for user's other active assignments
-                if status in ['active', 'pending']:
-                    is_valid, error_msg = check_user_has_active_assignment(
-                        cursor, assignment["user_id"], assignment_id
-                    )
-                    if not is_valid:
-                        flash(error_msg, "warning")
-                        cursor.close()
-                        conn.close()
-                        return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-                
-                # Check for room overlap if room changed or dates changed
-                if room_changed:
-                    # Check overlap in the new room
-                    is_valid, error_msg = check_room_overlap(
-                        cursor, new_room_id, start_date, end_date, assignment_id
-                    )
-                    if not is_valid:
-                        flash(error_msg, "warning")
-                        cursor.close()
-                        conn.close()
-                        return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-                elif dates_changed:
-                    # Dates changed but same room - still need overlap check
-                    is_valid, error_msg = check_room_overlap(
-                        cursor, new_room_id, start_date, end_date, assignment_id
-                    )
-                    if not is_valid:
-                        flash(error_msg, "warning")
-                        cursor.close()
-                        conn.close()
-                        return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-
-            # Update assignment
-            cursor.execute("""
-                UPDATE room_assignments
-                SET room_id = ?, start_date = ?, end_date = ?, monthly_rate = ?, 
-                    status = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE assignment_id = ?
-            """, (new_room_id, start_date, end_date, monthly_rate, status, assignment_id))
-
-            # Handle room availability updates
-            # 1. Handle the new room (or current room if status changed)
-            if status in ['active', 'pending']:
-                # Mark room as unavailable
-                cursor.execute("UPDATE rooms SET is_available = 0 WHERE room_id = ?", (new_room_id,))
-            else:  # completed or cancelled
-                # Check if new room has other active/pending assignments
-                cursor.execute("""
-                    SELECT COUNT(*) as count FROM room_assignments
-                    WHERE room_id = ? AND status IN ('active', 'pending')
-                    AND assignment_id != ?
-                """, (new_room_id, assignment_id))
-                
-                if cursor.fetchone()['count'] == 0:
-                    cursor.execute("UPDATE rooms SET is_available = 1 WHERE room_id = ?", (new_room_id,))
-
-            # 2. Handle the old room if room changed
-            if room_changed:
-                # Check if old room still has active/pending assignments
-                cursor.execute("""
-                    SELECT COUNT(*) as count FROM room_assignments
-                    WHERE room_id = ? AND status IN ('active', 'pending')
-                """, (original_room_id,))
-                
-                if cursor.fetchone()['count'] == 0:
-                    cursor.execute("UPDATE rooms SET is_available = 1 WHERE room_id = ?", (original_room_id,))
-
-            conn.commit()
-            
-            # Provide detailed success message
-            changes = []
-            if room_changed:
-                changes.append(f"room to {new_room_number}")
-            if status_changed:
-                changes.append(f"status to {status}")
-            if dates_changed:
-                changes.append("dates")
-            
-            change_summary = ", ".join(changes) if changes else "details"
-            flash(f"Assignment updated successfully! Changed: {change_summary}", "success")
-            
-            cursor.close()
-            conn.close()
-            return redirect(url_for("assignments"))
-
-        except Exception as e:
-            conn.rollback()
-            flash(f"Error updating assignment: {str(e)}", "danger")
-            cursor.close()
-            conn.close()
-            return redirect(url_for("edit_assignment", assignment_id=assignment_id))
-
-    # GET: Fetch data for form
+    # Fetch all buildings
     cursor.execute("SELECT building_id, building_name FROM buildings WHERE is_active = 1")
     buildings = cursor.fetchall()
 
-    building_id = assignment["building_id"]
-    # Show all rooms in the building, not just available ones (for editing)
-    cursor.execute("""
-        SELECT room_number, is_available 
-        FROM rooms 
-        WHERE building_id = ? 
-        ORDER BY room_number
-    """, (building_id,))
+    # Determine building for room dropdown
+    building_id = request.form.get("building_id") or assignment["building_id"]
+
+    # Fetch rooms in that building
+    cursor.execute("SELECT room_number FROM rooms WHERE building_id = ? AND is_available = 1", (building_id,))
     rooms = cursor.fetchall()
 
+    # Status options
     statuses = ["active", "pending", "completed", "cancelled"]
+
+    if request.method == "POST":
+        new_building_id = int(request.form.get("building_id"))
+        new_room_number = request.form.get("room_number")
+        old_room_id = assignment["room_id"]
+        end_date = request.form.get("end_date")
+        monthly_rate = request.form.get("monthly_rate")
+        status = request.form.get("status")
+
+        if not new_room_number or not end_date or not monthly_rate or not status:
+            flash("All fields are required.", "warning")
+            cursor.close()
+            conn.close()
+            return redirect(url_for("edit_assignment", assignment_id=assignment_id))
+
+        # Fetch the new room_id based on building and room number
+        cursor.execute(
+            "SELECT room_id FROM rooms WHERE room_number = ? AND building_id = ?",
+            (new_room_number, new_building_id)
+        )
+        new_room = cursor.fetchone()
+        if not new_room:
+            flash("Selected room not found.", "danger")
+            cursor.close()
+            conn.close()
+            return redirect(url_for("edit_assignment", assignment_id=assignment_id))
+        new_room_id = new_room["room_id"]
+
+        # Update assignment
+        cursor.execute("""
+            UPDATE room_assignments
+            SET room_id = ?, end_date = ?, monthly_rate = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE assignment_id = ?
+        """, (new_room_id, end_date, monthly_rate, status, assignment_id))
+
+        # Make new room occupied
+        cursor.execute("UPDATE rooms SET is_available = 0 WHERE room_id = ?", (new_room_id,))
+
+        # Free old room if changed
+        if old_room_id != new_room_id:
+            cursor.execute("UPDATE rooms SET is_available = 1 WHERE room_id = ?", (old_room_id,))
+
+        conn.commit()
+        flash("Assignment updated successfully!", "success")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("assignments"))
 
     cursor.close()
     conn.close()
 
-    return render_template("edit_assignment.html", assignment=assignment,
-                         buildings=buildings, rooms=rooms, statuses=statuses)
+    return render_template(
+        "edit_assignment.html",
+        assignment=assignment,
+        buildings=buildings,
+        rooms=rooms,
+        statuses=statuses
+    )
 @app.route("/get_rooms/<int:building_id>")
 def get_rooms(building_id):
     conn = get_db_connection()
@@ -423,208 +234,207 @@ def get_rooms(building_id):
 # -----------------------
 # HOME PAGE / DASHBOARD
 # -----------------------
-
 @app.route("/")
 def home():
-    # Check if user is logged in
     if not session.get('user_id'):
         return redirect(url_for('login'))
-    
-    # User is logged in, show dashboard
-    return render_template("index.html")
 
+    user_id = session.get('user_id')
+    role = session.get('role')
 
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # For admin: show all buildings and rooms
+    if role == "admin":
+        cursor.execute("SELECT COUNT(*) AS total_rooms FROM rooms")
+        total_rooms = cursor.fetchone()["total_rooms"]
+
+        cursor.execute("SELECT COUNT(*) AS occupied FROM rooms WHERE is_available = 0")
+        occupied = cursor.fetchone()["occupied"]
+
+        cursor.execute("SELECT COUNT(*) AS available FROM rooms WHERE is_available = 1")
+        available = cursor.fetchone()["available"]
+
+        cursor.execute("SELECT COUNT(*) AS pending FROM room_assignments WHERE status='pending'")
+        pending = cursor.fetchone()["pending"]
+
+    # For landlord: show only their buildings and rooms
+    elif role == "landlord":
+        # Buildings owned
+        cursor.execute("SELECT COUNT(*) AS total_buildings FROM buildings WHERE owner_id = ?", (user_id,))
+        total_buildings = cursor.fetchone()["total_buildings"]
+
+        # Rooms in owned buildings
+        cursor.execute("""
+            SELECT COUNT(*) AS total_rooms,
+                   SUM(CASE WHEN is_available = 0 THEN 1 ELSE 0 END) AS occupied,
+                   SUM(CASE WHEN is_available = 1 THEN 1 ELSE 0 END) AS available
+            FROM rooms
+            WHERE building_id IN (SELECT building_id FROM buildings WHERE owner_id = ?)
+        """, (user_id,))
+        rooms_stats = cursor.fetchone()
+        total_rooms = rooms_stats["total_rooms"] or 0
+        occupied = rooms_stats["occupied"] or 0
+        available = rooms_stats["available"] or 0
+
+        # Pending assignments in their buildings
+        cursor.execute("""
+            SELECT COUNT(*) AS pending
+            FROM room_assignments ra
+            JOIN rooms r ON ra.room_id = r.room_id
+            WHERE r.building_id IN (SELECT building_id FROM buildings WHERE owner_id = ?)
+              AND ra.status = 'pending'
+        """, (user_id,))
+        pending = cursor.fetchone()["pending"]
+
+    else:
+        # For students, you can leave stats empty or only their info
+        total_rooms = occupied = available = pending = None
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        "index.html",
+        role=role,
+        total_rooms=total_rooms,
+        occupied=occupied,
+        available=available,
+        pending=pending
+    )
 
 
 @app.route("/admin_assign_room", methods=["GET", "POST"])
 def admin_assign_room():
-    if request.method == "POST":
-        student_selection = request.form.get("student_selection")
-        existing_student_id = request.form.get("existing_student_id")
-        first_name = request.form.get("first_name")
-        last_name = request.form.get("last_name")
-        email = request.form.get("email")
-        room_id = request.form.get("room_id")
-        start_date = request.form.get("start_date")
-        end_date = request.form.get("end_date") or None  # Allow null for ongoing
-        monthly_rate = request.form.get("monthly_rate")
-
-        # Validate room and dates
-        if not room_id or not start_date or not monthly_rate:
-            flash("Room, start date, and monthly rate are required.", "danger")
-            return redirect(request.path)
-
-        try:
-            room_id = int(room_id)
-            monthly_rate = float(monthly_rate)
-        except ValueError:
-            flash("Invalid room ID or monthly rate.", "danger")
-            return redirect(request.path)
-
-        # Validate date range
-        is_valid, error_msg = validate_date_range(start_date, end_date)
-        if not is_valid:
-            flash(error_msg, "danger")
-            return redirect(request.path)
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        try:
-            user_id = None
-
-            # Determine if using existing student or creating new one
-            if student_selection == "existing" and existing_student_id:
-                try:
-                    user_id = int(existing_student_id)
-                    # Verify student exists
-                    cursor.execute("SELECT user_id, first_name, last_name FROM users WHERE user_id=? AND role='student'", (user_id,))
-                    student = cursor.fetchone()
-                    if not student:
-                        flash("Selected student not found.", "danger")
-                        cursor.close()
-                        conn.close()
-                        return redirect(request.path)
-                except ValueError:
-                    flash("Invalid student selection.", "danger")
-                    cursor.close()
-                    conn.close()
-                    return redirect(request.path)
-            
-            elif student_selection == "new":
-                # Validate new student fields
-                if not first_name or not last_name or not email:
-                    flash("First name, last name, and email are required for new student.", "danger")
-                    cursor.close()
-                    conn.close()
-                    return redirect(request.path)
-
-                # Validate email
-                email_regex = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
-                if not re.match(email_regex, email):
-                    flash("Invalid email format.", "danger")
-                    cursor.close()
-                    conn.close()
-                    return redirect(request.path)
-
-                # Check if email already exists
-                cursor.execute("SELECT user_id FROM users WHERE email=?", (email,))
-                existing = cursor.fetchone()
-                if existing:
-                    flash(f"Email {email} already exists. Please use 'Select Existing Student' option.", "warning")
-                    cursor.close()
-                    conn.close()
-                    return redirect(request.path)
-
-                # Create new tenant
-                username = email.split("@")[0]
-                counter = 1
-                original_username = username
-                
-                # Ensure unique username
-                while True:
-                    cursor.execute("SELECT COUNT(*) FROM users WHERE username=?", (username,))
-                    if cursor.fetchone()[0] == 0:
-                        break
-                    username = f"{original_username}{counter}"
-                    counter += 1
-
-                password_hash = generate_password_hash("TempPass123")
-                cursor.execute("""
-                    INSERT INTO users (username, password_hash, role, first_name, last_name, email, is_active)
-                    VALUES (?, ?, 'student', ?, ?, ?, 1)
-                """, (username, password_hash, first_name, last_name, email))
-                user_id = cursor.lastrowid
-            else:
-                flash("Please select a student or choose to create a new one.", "warning")
-                cursor.close()
-                conn.close()
-                return redirect(request.path)
-
-            # Check if user already has an active assignment
-            is_valid, error_msg = check_user_has_active_assignment(cursor, user_id)
-            if not is_valid:
-                flash(error_msg, "warning")
-                cursor.close()
-                conn.close()
-                return redirect(request.path)
-
-            # Check room exists and get current availability
-            cursor.execute("SELECT is_available, room_number FROM rooms WHERE room_id=?", (room_id,))
-            room = cursor.fetchone()
-            if not room:
-                flash("Room not found.", "danger")
-                cursor.close()
-                conn.close()
-                return redirect(request.path)
-
-            # Check for overlapping assignments (more important than simple availability flag)
-            is_valid, error_msg = check_room_overlap(cursor, room_id, start_date, end_date)
-            if not is_valid:
-                flash(error_msg, "warning")
-                cursor.close()
-                conn.close()
-                return redirect(request.path)
-
-            # Create room assignment
-            cursor.execute("""
-                INSERT INTO room_assignments
-                (user_id, room_id, start_date, end_date, monthly_rate, status, assigned_by)
-                VALUES (?, ?, ?, ?, ?, 'active', ?)
-            """, (user_id, room_id, start_date, end_date, monthly_rate, session.get('user_id')))
-
-            # Mark room unavailable
-            cursor.execute("UPDATE rooms SET is_available=0 WHERE room_id=?", (room_id,))
-
-            conn.commit()
-            flash(f"Room {room['room_number']} successfully assigned to {first_name} {last_name}!", "success")
-            return redirect(url_for("assignments"))
-
-        except Exception as e:
-            conn.rollback()
-            flash(f"Error assigning room: {e}", "danger")
-        finally:
-            cursor.close()
-            conn.close()
-
-    # GET: Show available rooms and students
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    # Get rooms that are truly available (no active/pending assignments)
-    cursor.execute("""
-        SELECT r.room_id, r.room_number, rt.type_name, r.floor_number, 
-               b.building_name, rt.base_rate
-        FROM rooms r
-        LEFT JOIN room_types rt ON r.type_id = rt.type_id
-        LEFT JOIN buildings b ON r.building_id = b.building_id
-        LEFT JOIN room_assignments ra ON r.room_id = ra.room_id 
-            AND ra.status IN ('active', 'pending')
-        WHERE ra.assignment_id IS NULL
-        ORDER BY b.building_name, r.room_number
-    """)
+
+    # Fetch buildings for admin (all active), landlord (only their buildings)
+    if session.get("role") == "admin":
+        cursor.execute("SELECT building_id, building_name FROM buildings WHERE is_active=1")
+    else:
+        cursor.execute(
+            "SELECT building_id, building_name FROM buildings WHERE is_active=1 AND owner_id=?",
+            (session.get("user_id"),)
+        )
+    buildings = cursor.fetchall()
+
+    # Fetch available rooms based on role
+    if session.get("role") == "admin":
+        cursor.execute("""
+            SELECT r.room_id, r.room_number, b.building_name
+            FROM rooms r
+            JOIN buildings b ON r.building_id = b.building_id
+            WHERE r.is_available=1
+        """)
+    else:
+        cursor.execute("""
+            SELECT r.room_id, r.room_number, b.building_name
+            FROM rooms r
+            JOIN buildings b ON r.building_id = b.building_id
+            WHERE r.is_available=1 AND b.owner_id=?
+        """, (session.get("user_id"),))
     rooms = cursor.fetchall()
-    
-    # Get students without active assignments
-    cursor.execute("""
-        SELECT u.user_id, u.first_name, u.last_name, u.email
-        FROM users u
-        LEFT JOIN room_assignments ra ON u.user_id = ra.user_id 
-            AND ra.status IN ('active', 'pending')
-        WHERE u.role = 'student' 
-        AND u.is_active = 1
-        AND ra.assignment_id IS NULL
-        ORDER BY u.first_name, u.last_name
-    """)
-    available_students = cursor.fetchall()
-    
+
+    if request.method == "POST":
+        username_or_email = request.form.get("username_or_email").strip()
+        room_id = request.form.get("room_id")
+        start_date = request.form.get("start_date")
+        end_date = request.form.get("end_date")
+        monthly_rate = request.form.get("monthly_rate")
+        assigned_by = request.form.get("assigned_by")
+
+        if not username_or_email or not room_id or not start_date:
+            flash("Username/email, room, and start date are required.", "danger")
+            return redirect(request.path)
+
+        # Validate dates
+        try:
+            sd = datetime.strptime(start_date, "%Y-%m-%d")
+            if end_date:
+                ed = datetime.strptime(end_date, "%Y-%m-%d")
+                if ed <= sd:
+                    flash("End date must be later than start date.", "danger")
+                    return redirect(request.path)
+        except ValueError:
+            flash("Invalid date format.", "danger")
+            return redirect(request.path)
+
+        # Check if user exists
+        cursor.execute("""
+            SELECT user_id FROM users
+            WHERE username=? OR email=?
+        """, (username_or_email, username_or_email))
+        user = cursor.fetchone()
+        if not user:
+            flash("User not found. Please enter a valid username or email.", "danger")
+            return redirect(request.path)
+        user_id = user["user_id"]
+
+        # Check room availability and ownership
+        if session.get("role") == "admin":
+            cursor.execute("SELECT is_available FROM rooms WHERE room_id=?", (room_id,))
+        else:
+            cursor.execute("""
+                SELECT r.is_available
+                FROM rooms r
+                JOIN buildings b ON r.building_id = b.building_id
+                WHERE r.room_id=? AND b.owner_id=?
+            """, (room_id, session.get("user_id")))
+        room = cursor.fetchone()
+        if not room:
+            flash("Room not found or not allowed.", "danger")
+            return redirect(request.path)
+        if room["is_available"] == 0:
+            flash("Room is not available.", "danger")
+            return redirect(request.path)
+
+        # Assign the room
+        cursor.execute("""
+            INSERT INTO room_assignments
+            (user_id, room_id, start_date, end_date, monthly_rate, status, assigned_by)
+            VALUES (?, ?, ?, ?, ?, 'active', ?)
+        """, (user_id, room_id, start_date, end_date, monthly_rate, assigned_by))
+
+        cursor.execute("UPDATE rooms SET is_available=0 WHERE room_id=?", (room_id,))
+        conn.commit()
+
+        flash("Room successfully assigned!", "success")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("users"))
+
     cursor.close()
     conn.close()
+    return render_template("06_assign_room.html", buildings=buildings, rooms=rooms,
+                           current_user={'user_id': session.get('user_id')})
 
-    return render_template("06_assign_room.html", 
-                         rooms=rooms, 
-                         available_students=available_students,
-                         current_user={'user_id': session.get('user_id')})
+# API route: landlord-specific available rooms by building & floor
+@app.route("/landlord_rooms/<int:building_id>/<int:floor_number>")
+def landlord_rooms(building_id, floor_number):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if session.get("role") == "admin":
+        cursor.execute("""
+            SELECT room_id, room_number
+            FROM rooms
+            WHERE building_id=? AND floor_number=? AND is_available=1
+        """, (building_id, floor_number))
+    else:
+        cursor.execute("""
+            SELECT r.room_id, r.room_number
+            FROM rooms r
+            JOIN buildings b ON r.building_id = b.building_id
+            WHERE r.building_id=? AND r.floor_number=? AND r.is_available=1 AND b.owner_id=?
+        """, (building_id, floor_number, session.get("user_id")))
+
+    rooms = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify([dict(r) for r in rooms])
+
 
 @app.route("/edit_room/<int:room_id>", methods=["GET", "POST"])
 def edit_room(room_id):
@@ -725,8 +535,17 @@ def add_room():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Fetch active buildings for the dropdown
-    cursor.execute("SELECT building_id, building_name, total_floors FROM buildings WHERE is_active = 1")
+    # Admin can see all active buildings
+    if session.get("role") == "admin":
+        cursor.execute("SELECT building_id, building_name, total_floors FROM buildings WHERE is_active = 1")
+    else:
+        # Landlord can only see their own buildings
+        cursor.execute("""
+            SELECT building_id, building_name, total_floors 
+            FROM buildings 
+            WHERE is_active = 1 AND owner_id = ?
+        """, (session.get("user_id"),))
+    
     buildings = cursor.fetchall()
 
     # Fetch active room types
@@ -743,6 +562,15 @@ def add_room():
         if not building_id or not floor_number or not room_number or not type_id:
             flash("All fields are required.", "warning")
             return redirect(url_for("add_room"))
+
+        # Ensure landlords only select their own buildings
+        if session.get("role") == "landlord":
+            cursor.execute("SELECT COUNT(*) as count FROM buildings WHERE building_id = ? AND owner_id = ?", 
+                           (building_id, session.get("user_id")))
+            allowed = cursor.fetchone()["count"]
+            if allowed == 0:
+                flash("You cannot add a room to a building you do not own.", "danger")
+                return redirect(url_for("add_room"))
 
         # Prevent duplicate room number in the same building
         cursor.execute("""
