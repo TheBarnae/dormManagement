@@ -11,9 +11,9 @@
             <p class="page-subtitle">View and manage all dormitory rooms</p>
         </div>
         <a href="{{ url_for('add_room') }}" class="btn-primary-modern">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <line x1="8" y1="2" x2="8" y2="14" />
-                <line x1="2" y1="8" x2="14" y2="8" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Add Room
         </a>
@@ -24,10 +24,10 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="position-relative">
-                        <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2"
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"
                             style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                         </svg>
                         <input type="text" name="search" value="{{ search }}" class="form-control-modern"
                             placeholder="Search by room number..." style="padding-left: 2.5rem;">
@@ -63,9 +63,9 @@
             <thead>
                 <tr>
                     <th>
-                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.5rem;">
-                            <rect x="3" y="9" width="18" height="13" rx="2" ry="2"></rect>
-                            <path d="M9 22V12h6v10"></path>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.5rem;">
+                            <rect x="3" y="9" width="18" height="13" rx="2" ry="2"/>
+                            <path d="M9 22V12h6v10"/>
                         </svg>
                         Room
                     </th>
@@ -130,8 +130,8 @@
                 {% else %}
                     <tr>
                         <td colspan="6" style="text-align: center; padding: 3rem; color: var(--gray-600);">
-                            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1rem; display: block; opacity: 0.3;">
-                                <rect x="3" y="9" width="18" height="13" rx="2" ry="2"></rect>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1rem; display: block; opacity: 0.3;">
+                                <rect x="3" y="9" width="18" height="13" rx="2" ry="2"/>
                             </svg>
                             <div style="font-weight: 600; margin-bottom: 0.5rem;">No rooms found</div>
                             <div style="font-size: 0.875rem;">Rooms will appear here once they are added</div>
