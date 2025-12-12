@@ -102,13 +102,14 @@
                         </td>
                         <td style="text-align: right;">
                             <div class="d-flex gap-2 justify-content-end">
-                                <button class="btn-secondary-modern" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                                    View
-                                </button>
+                                
                                 {% if session.get('role') in ['admin', 'landlord'] %}
-                                <button class="btn-secondary-modern" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+                               
+                                <a href="{{ url_for('edit_assignment', assignment_id=assign.assignment_id) }}" 
+                                class="btn-secondary-modern" 
+                                style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
                                     Edit
-                                </button>
+                                </a>
                                 {% endif %}
                             </div>
                         </td>

@@ -1,0 +1,120 @@
+{% extends '_base.html' %}
+
+{% block title %}Edit Assignment{% endblock %}
+
+{% block content %}
+<div class="container-modern">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card-modern">
+                <div class="card-header-modern">
+                    Edit Assignment
+                </div>
+                <div class="p-4">
+                    <form method="POST">
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Tenant</label>
+                            <input type="text" class="form-control-modern" 
+                                   value="{{ assignment.first_name }} {{ assignment.last_name }}" disabled>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Building</label>
+                            <select name="building_id" id="building_select" class="form-control-modern" required>
+                                {% for b in buildings %}
+                                    <option value="{{ b.building_id }}" {% if b.building_id == assignment.building_id %}selected{% endif %}>
+                                        {{ b.building_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                       <!-- Room dropdown -->
+<div class="form-group mb-3">
+    <label class="form-label-modern">Room</label>
+    <select name="room_number" id="room_select" class="form-control-modern" required>
+        {% for r in rooms %}
+            <option value="{{ r.room_number }}" {% if r.room_number == assignment.room_number %}selected{% endif %}>
+                {{ r.room_number }}
+            </option>
+        {% endfor %}
+    </select>
+</div>
+
+
+
+
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">End Date</label>
+                            <input type="date" name="end_date" class="form-control-modern" 
+                                   value="{{ assignment.end_date }}">
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Monthly Rate</label>
+                            <input type="number" name="monthly_rate" step="0.01" class="form-control-modern"
+                                   value="{{ assignment.monthly_rate }}">
+                        </div>
+                        <input type="hidden" name="old_room_number" value="{{ assignment.room_number }}">
+
+
+                        <div class="form-group mb-4">
+                            <label class="form-label-modern">Status</label>
+                            <select name="status" class="form-control-modern" required>
+                                {% for s in statuses %}
+                                <option value="{{ s }}" {% if s == assignment.status %}selected{% endif %}>{{ s.title() }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for('assignments') }}" class="btn-secondary-modern">Cancel</a>
+                            <button type="submit" class="btn-primary-modern">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+const buildingSelect = document.getElementById('building_select');
+const roomSelect = document.getElementById('room_select');
+
+buildingSelect.addEventListener('change', function() {
+    const buildingId = this.value;
+    roomSelect.disabled = true;
+    roomSelect.innerHTML = '<option>Loading rooms...</option>';
+
+    if(buildingId) {
+        fetch(`/get_rooms/${buildingId}`)
+            .then(res => res.json())
+            .then(data => {
+                roomSelect.innerHTML = '';
+                if(data.rooms.length > 0){
+                    data.rooms.forEach(room => {
+                        const opt = document.createElement('option');
+                        opt.value = room; // only room number
+                        opt.text = room;  // displayed to user
+                        roomSelect.appendChild(opt);
+                    });
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = '';
+                    opt.text = 'No rooms available';
+                    roomSelect.appendChild(opt);
+                }
+                roomSelect.disabled = false;
+            })
+            .catch(err => {
+                console.error('Error fetching rooms:', err);
+                roomSelect.innerHTML = '<option>Error loading rooms</option>';
+                roomSelect.disabled = false;
+            });
+    }
+});
+</script>
+
+
+
+{% endblock %}
