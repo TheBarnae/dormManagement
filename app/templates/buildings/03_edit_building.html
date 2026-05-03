@@ -1,0 +1,70 @@
+{% extends '_base.html' %}
+
+{% block title %}Edit Building{% endblock %}
+
+{% block content %}
+<div class="container-modern">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            {% if building %}
+            <div class="card-modern">
+                <div class="card-header-modern">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="align-middle me-2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Edit Building
+                </div>
+                <div class="p-4">
+                    <form method="POST">
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Building Name</label>
+                            <input type="text" name="building_name" class="form-control-modern" value="{{ building.building_name }}" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Address</label>
+                            <textarea name="address" class="form-control-modern" rows="3" required>{{ building.address }}</textarea>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Total Floors</label>
+                            <input type="number" name="total_floors" class="form-control-modern" min="1" value="{{ building.total_floors }}" required>
+                        </div>
+
+                        {% if session.get('role') == 'admin' and landlords %}
+                        <div class="form-group mb-4">
+                            <label class="form-label-modern">Owner (Landlord)</label>
+                            <select name="owner_id" class="form-control-modern">
+                                <option value="">-- No Owner --</option>
+                                {% for l in landlords %}
+                                <option value="{{ l.user_id }}" {% if building.owner_id == l.user_id %}selected{% endif %}>
+                                    {{ l.username }} - {{ l.first_name }} {{ l.last_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for('buildings') }}" class="btn-secondary-modern">Cancel</a>
+                            <button type="submit" class="btn-primary-modern">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                </svg>
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert-modern alert-danger">
+                Building not found. <a href="{{ url_for('buildings') }}" class="text-reset text-decoration-underline">Back to Buildings</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

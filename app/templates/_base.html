@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dormitory Management System{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pages.css') }}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="app-shell">
+    {% if session.get('user_id') %}
+    <div class="shell-layout" id="shellLayout">
+        <aside class="sidebar-modern" id="sidebarModern">
+            <div class="sidebar-header">
+                <a href="{{ url_for('home') }}" class="sidebar-brand">
+                    <span class="brand-dot"></span>
+                    <span>DORMY</span>
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('home') }}" class="sidebar-link {% if request.endpoint == 'home' %}active{% endif %}">Dashboard</a>
+
+                {% if session.get('role') == 'admin' %}
+                    <a href="{{ url_for('users') }}" class="sidebar-link {% if request.endpoint in ['users', 'admin_add_user', 'edit_user'] %}active{% endif %}">Users</a>
+                    <a href="{{ url_for('buildings') }}" class="sidebar-link {% if request.endpoint in ['buildings', 'add_building', 'edit_building'] %}active{% endif %}">Buildings</a>
+                    <a href="{{ url_for('rooms') }}" class="sidebar-link {% if request.endpoint in ['rooms', 'add_room', 'edit_room', 'room_type'] %}active{% endif %}">Rooms</a>
+                    <a href="{{ url_for('assignments') }}" class="sidebar-link {% if request.endpoint in ['assignments', 'assign_room', 'edit_assignment'] %}active{% endif %}">Assignments</a>
+                    <a href="{{ url_for('payments') }}" class="sidebar-link {% if request.endpoint in ['payments', 'record_payment', 'edit_payment', 'view_payment', 'payment'] %}active{% endif %}">Payments</a>
+                    <a href="{{ url_for('maintenance') }}" class="sidebar-link {% if request.endpoint in ['maintenance', 'add_maintenance', 'edit_maintenance'] %}active{% endif %}">Maintenance Requests</a>
+                    <a href="{{ url_for('announcements') }}" class="sidebar-link {% if request.endpoint in ['announcements'] %}active{% endif %}">Announcements</a>
+                    <a href="{{ url_for('reports') }}" class="sidebar-link {% if request.endpoint in ['reports', 'export_reports_csv'] %}active{% endif %}">Reports</a>
+                {% elif session.get('role') == 'landlord' %}
+                    <a href="{{ url_for('buildings') }}" class="sidebar-link {% if request.endpoint in ['buildings', 'add_building', 'edit_building'] %}active{% endif %}">Buildings</a>
+                    <a href="{{ url_for('rooms') }}" class="sidebar-link {% if request.endpoint in ['rooms', 'add_room', 'edit_room', 'room_type'] %}active{% endif %}">Rooms</a>
+                    <a href="{{ url_for('assignments') }}" class="sidebar-link {% if request.endpoint in ['assignments', 'assign_room', 'edit_assignment'] %}active{% endif %}">Assignments</a>
+                    <a href="{{ url_for('payments') }}" class="sidebar-link {% if request.endpoint in ['payments', 'record_payment', 'edit_payment', 'view_payment', 'payment'] %}active{% endif %}">Payments</a>
+                    <a href="{{ url_for('maintenance') }}" class="sidebar-link {% if request.endpoint in ['maintenance', 'add_maintenance', 'edit_maintenance'] %}active{% endif %}">Maintenance Requests</a>
+                    <a href="{{ url_for('announcements') }}" class="sidebar-link {% if request.endpoint in ['announcements'] %}active{% endif %}">Announcements</a>
+                {% else %}
+                    <a href="{{ url_for('rooms') }}" class="sidebar-link {% if request.endpoint in ['rooms', 'room_type'] %}active{% endif %}">Rooms</a>
+                    <a href="{{ url_for('assignments') }}" class="sidebar-link {% if request.endpoint in ['assignments'] %}active{% endif %}">My Assignment</a>
+                    <a href="{{ url_for('payments') }}" class="sidebar-link {% if request.endpoint in ['payments', 'view_payment'] %}active{% endif %}">Payments</a>
+                    <a href="{{ url_for('announcements') }}" class="sidebar-link {% if request.endpoint in ['announcements'] %}active{% endif %}">Announcements</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="btn-danger-modern nav-auth-btn">Logout</a>
+            </nav>
+        </aside>
+
+        <div class="main-panel">
+            <header class="topbar-modern">
+                <button class="sidebar-toggle-btn" type="button" id="sidebarToggle" aria-label="Toggle navigation">☰</button>
+                <div class="topbar-title-wrap">
+                    <h2 class="topbar-title">
+                        <!-- Dynamically display current page title based on route -->
+                        {% set endpoint = request.endpoint or '' %}
+                        {% if endpoint.endswith('home') %}Dashboard
+                        {% elif endpoint.endswith('users') or endpoint.endswith('admin_add_user') or endpoint.endswith('edit_user') %}Users
+                        {% elif endpoint.endswith('buildings') or endpoint.endswith('add_building') or endpoint.endswith('edit_building') %}Buildings
+                        {% elif endpoint.endswith('rooms') or endpoint.endswith('add_room') or endpoint.endswith('edit_room') or endpoint.endswith('room_types') %}Rooms
+                        {% elif endpoint.endswith('assignments') or endpoint.endswith('admin_assign_room') or endpoint.endswith('edit_assignment') %}Assignments
+                        {% elif endpoint.endswith('payments') or endpoint.endswith('record_payment') or endpoint.endswith('edit_payment') or endpoint.endswith('payment') %}Payments
+                        {% elif endpoint.endswith('maintenance') or endpoint.endswith('add_maintenance') or endpoint.endswith('edit_maintenance') or endpoint.endswith('maintenance_requests') %}Maintenance Requests
+                        {% elif endpoint.endswith('announcements') %}Announcements
+                        {% elif endpoint.endswith('reports') or endpoint.endswith('export_reports') or endpoint.endswith('export_payments') or endpoint.endswith('export_assignments') %}Reports
+                        {% else %}Dashboard
+                        {% endif %}
+                    </h2>
+                </div>
+                <div class="topbar-actions">
+                    <span class="user-chip">{{ session.get('username') }} • {{ session.get('role')|title }}</span>
+                </div>
+            </header>
+
+            <main class="content-modern">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="container-modern flash-container">
+                            {% for category, message in messages %}
+                                <div class="alert-modern alert-{{ 'success' if category == 'success' else 'danger' if category == 'danger' else 'info' }}">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+    {% endif %}
+
+                {% block content %}{% endblock %}
+
+    {% if session.get('user_id') %}
+            </main>
+        </div>
+    </div>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

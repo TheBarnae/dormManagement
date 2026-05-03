@@ -1,0 +1,48 @@
+{% extends '_base.html' %}
+
+{% block title %}Announcements{% endblock %}
+
+{% block content %}
+<div class="container-modern">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Announcements</h1>
+            <p class="page-subtitle">Latest dormitory notices for all users.</p>
+        </div>
+    </div>
+
+    <div class="card-modern">
+        <table class="table-modern w-100">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Message</th>
+                    <th>Posted By</th>
+                    <th>Posted At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if announcements %}
+                    {% for announcement in announcements %}
+                    <tr>
+                        <td class="text-strong-dark">{{ announcement.title }}</td>
+                        <td>{{ announcement.message }}</td>
+                        <td>
+                            {{ (announcement.posted_by_first_name or '') ~ ' ' ~ (announcement.posted_by_last_name or '') }}
+                        </td>
+                        <td>{{ announcement.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <div class="empty-title">No announcements yet</div>
+                            <div class="text-sm">Announcements will appear here once posted.</div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

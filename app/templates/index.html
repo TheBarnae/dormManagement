@@ -1,0 +1,65 @@
+{% extends '_base.html' %}
+
+{% block content %}
+<div class="container-modern">
+    <div class="hero-banner mb-4">
+        <h1 class="hero-title mb-2">Dormitory Operations Dashboard</h1>
+        <p class="hero-subtitle mb-0">
+            {% if role == 'admin' %}
+                Centralized control for occupancy, billing, and resident management.
+            {% elif role == 'landlord' %}
+                Monitor your properties, assignments, and payment performance.
+            {% elif role == 'student' %}
+                View your room assignment and payment activity in one place.
+            {% else %}
+                Manage dormitory operations from a unified workspace.
+            {% endif %}
+        </p>
+    </div>
+
+    {% if role in ['admin', 'landlord'] %}
+    <div class="dashboard-kpi-grid mb-4">
+        <div class="kpi-card">
+            <div class="kpi-label">Total Rooms</div>
+            <div class="kpi-value">{{ total_rooms }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Occupied</div>
+            <div class="kpi-value text-success">{{ occupied }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Available</div>
+            <div class="kpi-value text-warning">{{ available }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Occupancy Rate</div>
+            <div class="kpi-value text-info">{{ occupancy_pct }}%</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Pending Assignments</div>
+            <div class="kpi-value text-danger">{{ pending }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Collections (This Month)</div>
+            <div class="kpi-value text-success">₱{{ "{:,.2f}".format(collections_this_month or 0) }}</div>
+        </div>
+    </div>
+
+    <div class="analytics-panel mb-4">
+        <h3 class="analytics-panel-title">Operations Snapshot</h3>
+        <p class="analytics-panel-subtitle">
+            Current availability is <strong>{{ available }}</strong> room(s), with <strong>{{ occupied }}</strong> occupied and pending assignment count at <strong>{{ pending }}</strong>.
+        </p>
+    </div>
+    {% endif %}
+
+    {% if role == 'student' %}
+    <div class="analytics-panel mb-4">
+        <h3 class="analytics-panel-title">Student Workspace</h3>
+        <p class="analytics-panel-subtitle">
+            Use the left navigation to open <strong>My Assignment</strong>, <strong>Payments</strong>, or <strong>Rooms</strong>.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

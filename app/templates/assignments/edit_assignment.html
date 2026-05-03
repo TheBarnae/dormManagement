@@ -1,0 +1,95 @@
+{% extends '_base.html' %}
+
+{% block title %}Edit Assignment{% endblock %}
+
+{% block content %}
+<div class="container-modern">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card-modern">
+                <div class="card-header-modern">
+                    Edit Assignment
+                </div>
+
+                <div class="p-4">
+          <form method="POST" id="editAssignmentForm">
+
+            <!-- Tenant (read-only) -->
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Tenant</label>
+              <input type="text" class="form-control-modern" value="{{ assignment.first_name }} {{ assignment.last_name }}" disabled>
+                        </div>
+
+            <!-- Building (select) -->
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Building</label>
+              <select name="building_id" id="buildingSelect" class="form-control-modern" required>
+                                {% for b in buildings %}
+                                    <option value="{{ b.building_id }}" {% if b.building_id == assignment.building_id %}selected{% endif %}>
+                                        {{ b.building_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+              <!-- hidden fallback to always send value when select is disabled -->
+              <input type="hidden" name="building_id_hidden" id="buildingHidden" value="{{ assignment.building_id }}">
+                        </div>
+
+            <!-- Room (select) -->
+<div class="form-group mb-3">
+    <label class="form-label-modern">Room</label>
+              <select name="room_number" id="roomSelect" class="form-control-modern" required>
+        {% for r in rooms %}
+                  <option value="{{ r.room_number }}" {% if r.room_number == assignment.room_number %}selected{% endif %} {% if r.is_available == 0 and r.room_number != assignment.room_number %}data-occupied="1"{% endif %}>
+                    {{ r.room_number }}{% if r.is_available == 0 and r.room_number != assignment.room_number %} (Occupied){% endif %}
+            </option>
+        {% endfor %}
+    </select>
+              <!-- hidden fallback to always send value when select is disabled -->
+              <input type="hidden" name="room_number_hidden" id="roomHidden" value="{{ assignment.room_number }}">
+</div>
+
+            <!-- Start / End Dates -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label-modern">Start Date</label>
+                <input type="date" name="start_date" id="startDate" class="form-control-modern" value="{{ assignment.start_date }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label-modern">End Date</label>
+                <input type="date" name="end_date" id="endDate" class="form-control-modern" value="{{ assignment.end_date }}">
+                            </div>
+                        </div>
+
+            <!-- Monthly Rate -->
+                        <div class="form-group mb-3">
+                            <label class="form-label-modern">Monthly Rate</label>
+              <input type="number" name="monthly_rate" id="monthlyRate" step="0.01" class="form-control-modern" value="{{ assignment.monthly_rate }}">
+                        </div>
+
+            <!-- Status -->
+                        <div class="form-group mb-4">
+                            <label class="form-label-modern">Status</label>
+              <select name="status" id="statusSelect" class="form-control-modern" required>
+                                {% for s in statuses %}
+                                <option value="{{ s }}" {% if s == assignment.status %}selected{% endif %}>{{ s.title() }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+            <!-- Buttons -->
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for('assignments') }}" class="btn-secondary-modern">Cancel</a>
+                            <button type="submit" class="btn-primary-modern">Save Changes</button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/edit_assignment.js') }}"></script>
+{% endblock %}
